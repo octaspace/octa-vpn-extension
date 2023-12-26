@@ -1,80 +1,83 @@
 import { useState } from "react"
-import { Button, Image, Form, Input, Space, message } from 'antd';
-import { setToken } from "~helpers/storage";
-import { checkToken } from "~helpers/login";
-import logo from "assets/img/octa.png";
-
-type FieldType = {
-    token?: string;
-};
+import { clearData, setToken, storage } from "~helpers/storage";
+import logo from "data-base64:~assets/img/octa.png";
+import { ActionIcon, Box, Button, Group, Overlay, Stack, TextInput, Title } from '@mantine/core';
+import { Image } from '@mantine/core';
+import { useForm } from '@mantine/form';
+import { RiQuestionLine, RiKeyFill } from "react-icons/ri";
+import { Octa } from "@octaspace/api.js";
+import { wait } from "~helpers/wait";
 
 function Login() {
-  const [data, setData] = useState("")
-  const [messageApi, contextHolder] = message.useMessage();
-  const containerStyle = {
-    display: 'flex',
-    justifyItems: "column",
-    justifyContent: 'center',
-    alignItems: 'center',
-    height: '100vh',
-  };
+  const [IsLoading, setIsLoading] = useState(false)
 
-  const onFinish = async (value: any) => {
-    if(await checkToken(value.token)){
-        setToken(value.token)
-        success()
-        return
+  async function submit(apikey:string) {
+    try{
+      await clearData()
+      let octa = new Octa(apikey)
+      const data = await octa.getAccountInfo()
+      setIsLoading(false)
+      if(data.deposit_address){
+        setToken(apikey);
+        form.setFieldError('apikey', "Success");
+        await wait(2000)
+      }
     }
-    else{
-        error()
-        return
+    catch(err:any){
+      setIsLoading(false)
+      form.setFieldError('apikey', err.message);
     }
-  };
-  const success = () => {
-    messageApi.open({
-      type: 'success',
-      content: 'Signed In',
-    });
-  };
-  const error = () => {
-    messageApi.open({
-      type: 'error',
-      content: 'Invalid API Key',
-    });
-  };
+  }
+
+  const form = useForm({
+    initialValues: { apikey: ''},
+    validate: {
+      apikey: (value) => {
+        if(value.length !== 64)
+        {
+          return 'Invalid Key'
+        }
+        setIsLoading(true)
+        submit(value)
+        return undefined;
+      }
+    },
+  });
+
   return (
     <>
-    <div style={containerStyle}>
-        {contextHolder}
-            <Image width={50} src={logo} alt="OctaVPN" preview={false}></Image>
-        
-            <Form
-                name="basic"
-                labelCol={{ span: 8 }}
-                wrapperCol={{ span: 16 }}
-                style={{ maxWidth: 250 }}
-                onFinish={onFinish}
-                autoComplete="off"
-            >
-
-                <Form.Item<FieldType>
-                    label="API Key"
-                    style={{
-                        fontSize: "20px"
-                    }}
-                    name="token"
-                    rules={[{ required: true, message: 'Please enter your API Key' }]}
-                >
-                    <Input.Password />
-                </Form.Item>
-
-                <Form.Item wrapperCol={{ offset: 8, span: 16 }}>
-                    <Button type="primary" htmlType="submit" style={{ backgroundColor: "#8B68FF" }}>
-                        Sign In
-                    </Button>
-                </Form.Item>
-            </Form>
-            </div>
+    <Box w={350} h={500} p={10}
+      style={{
+        backgroundImage: "linear-gradient(150deg,#CC1B99, #040308, #471288)",
+      }}>
+    <Overlay color="#000" opacity={0.2} zIndex={0}/>
+    <Group h={100}></Group>
+    <Stack justify="center">
+      <Group position="center">
+        <Image
+              width={70}
+              alt="OctaVPN"
+              src={logo}
+              style={{filter:'drop-shadow(0 0 4mm rgb(160, 0, 210))'}}
+            />
+        </Group>
+      <Group position="center">
+        <Title color="#ffffff" style={{zIndex:0}}>OctaVPN</Title>
+      </Group>
+      <Box maw={320} mx="auto">
+        <form onSubmit={form.onSubmit(()=>{})}>
+          <TextInput  name="apikey" styles={{label:{color:"white"}}}
+          icon={<RiKeyFill color="white" />} 
+          placeholder="Enter your API key"
+          rightSection={<ActionIcon color="dark" onClick={() => window.open("https://cube.octa.space/settings")} variant="filled"><RiQuestionLine size={14} /></ActionIcon>}
+          {...form.getInputProps('apikey')} />
+          <Button type="submit" loading={IsLoading} fullWidth mt="sm">
+            Submit
+          </Button>
+      </form>
+    </Box>
+    </Stack>
+    </Box>
           </>
   )
 }
