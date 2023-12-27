@@ -22,7 +22,7 @@ export async function connect(nodeid:number) {
         }
         let uuid:string = (await new Octa(await storage.getItem("token")).createVPN("http_proxy",nodeid)).uuid
         await storage.setItem("uuid",uuid)
-        let data:vpnDetails = await new Octa(await storage.getItem("token")).getVPN(uuid)
+        let data:vpnDetails = await new Octa(await storage.getItem("token")).getVPN(uuid,7,2000)
         await storage.setItem("vpn_ip",data.ip)
         await storage.setItem("vpn_city",data.city)
         await storage.setItem("vpn_country",data.country)
