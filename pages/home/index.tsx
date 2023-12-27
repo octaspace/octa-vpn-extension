@@ -138,7 +138,7 @@ function Home() {
         <Group position="center">
           <Group w={200} position="apart">
               <DetailCircle data={(proxyStatus=="Connecting" || proxyStatus=="Connected" ) ? nodeId.toString() : ".."} title="NODE" icon={<FaServer color="cyan" />} />
-              <DetailCircle data={(proxyStatus=="Connecting" || proxyStatus=="Connected" ) ? nodePrice.toString() : "0"} title="Cost/GB" icon={<Text style={{fontWeight:"bold", color:"cyan"}}>Ø</Text>} />
+              <DetailCircle data={(proxyStatus=="Connecting" || proxyStatus=="Connected" ) ? (nodePrice / 100).toFixed(2).toString() : "0"} title="Cost/GB" icon={<Text style={{fontWeight:"bold", color:"cyan"}}>Ø</Text>} />
           </Group>
         </Group>
         </Stack>
