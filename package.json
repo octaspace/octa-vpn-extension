@@ -1,8 +1,8 @@
 {
   "name": "octa-vpn",
-  "displayName": "Octa vpn",
+  "displayName": "OCTA VPN",
   "version": "0.0.1",
-  "description": "VPN for browsers",
+  "description": "OCTA VPN for browsers",
   "author": "",
   "scripts": {
     "dev": "plasmo dev --verbose",
