@@ -24,7 +24,7 @@ interface ListParam {
             mergedGroupedData = { ...mergedGroupedData, ...chunk };
           }
         }
-  
+
         setNodeInfo(mergedGroupedData);
       };
   
@@ -45,7 +45,7 @@ interface ListParam {
           </>
         ) : (
           <>
-            <Stack w={250}>
+            <Stack w={280}>
               {sortedEntries.map(([countryName, countryData]) => {
                 const CountryIconComponent = CountryIcons[countryData[0].country_iso];
                 return (
@@ -56,7 +56,8 @@ interface ListParam {
                   >
                     <Group position="apart">
                       <CountryIconComponent title={countryName} height={25} style={{ borderRadius: 5 }} />
-                      <Text color="white">{countryName}</Text>
+                      {countryName.length>20 ? <><Text color="white" style={{textAlign:"center",fontSize:"14px"}}>{countryName}</Text></> : <><Text color="white" style={{textAlign:"center"}}>{countryName}</Text></>}
+                      <Text color="white">{(countryData[0].traffic_price*0.01).toString()}</Text>
                     </Group>
                   </UnstyledButton>
                 );

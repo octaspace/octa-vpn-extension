@@ -49,7 +49,7 @@ export async function connect(nodeid:number) {
             NotifiyError('Network Error', <RiGlobalLine />)
             return
         }
-        NotifiyError('Try another Node',<BsEmojiDizzy />)
+        NotifiyError(err.message,<BsEmojiDizzy />)
     }
 }
 

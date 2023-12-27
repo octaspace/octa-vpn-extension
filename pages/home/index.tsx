@@ -110,6 +110,13 @@ function Home() {
           <Settings />
         </Modal>
         <Modal centered size="auto" opened={openedList} onClose={closeList} scrollAreaComponent={ScrollArea.Autosize} styles={{ title: { color: 'white' } }} overlayProps={{blur: 2,}} style={{color:"white"}} title="Select Country">
+          <Modal.Title mb={10}>
+            <Group position="apart">
+            <Box w={50}></Box>
+            <Text style={{textAlign:"center"}}>Country</Text>
+            <Text>Ø/GB</Text>
+            </Group>
+            </Modal.Title>
           <List close={CloseModel} />
         </Modal>
         <Stack spacing="xs">
