@@ -1,18 +1,20 @@
 import { useEffect, useState } from "react"
-import { ActionIcon, BackgroundImage, Box, Button, Group, Modal, ScrollArea, Stack, Text, Title } from '@mantine/core';
+import { ActionIcon, BackgroundImage, Box, Button, Group, HoverCard, Modal, ScrollArea, Stack, Text, Title } from '@mantine/core';
 import Settings from "./settings";
 import { useDisclosure } from "@mantine/hooks";
-import { RiSettings5Line, RiEdit2Line } from "react-icons/ri";
+import { RiSettings5Line, RiEdit2Line, RiArrowDownFill, RiArrowUpFill } from "react-icons/ri";
 import stars from "data-base64:~assets/img/stars.png";
 import { HomeButton } from "~components/connectbtn";
 import { List } from "./list";
 import { Status } from "~components/status";
-import { storage } from "~helpers/storage";
-import { Load, type countryInfoType } from "~pages/load";
+import { type NodeStorageData, storage } from "~helpers/storage";
+import { Load, type NodeDataType, type countryInfoType } from "~pages/load";
 import { Notifications } from "@mantine/notifications";
 import { DetailCircle } from "~components/detailCircle";
 import { FaServer } from "react-icons/fa6";
 import { FlagIcon } from "./flagicon";
+import { proxy } from "~background";
+import { connect, disconnect } from "~helpers/connection";
 
 function Home() {
   const [balanceValue, setBalanceValue] = useState("..")
@@ -29,39 +31,111 @@ function Home() {
   const [countryLocal, setcountryLocal] = useState("")
   const [cityLocal, setcityLocal] = useState("")
   const [ipLocal, setipLocal] = useState("")
+  const [nodeDownload, setNodeDownload] = useState("")
+  const [nodeUpload, setNodeUpload] = useState("")
+  const [advancedView, setAdvancedView] = useState(false)
 
-  const CloseModel = async (country:string,data:countryInfoType) =>{
-    let oldvalue: {
-      node_id: number; 
-      traffic_price: number 
-      country_iso: string   
-    }[] =[]
-    let oldprice:number = data[country][0].traffic_price
-
-    data[country].forEach((value)=>{
-      if(oldprice===value.traffic_price)
-      oldvalue.push(value)
-    })
-
-    const randomIndex = Math.floor(Math.random() * oldvalue.length);
-
-    await storage.setItem("country_name",country)
-    await storage.setItem("country",oldvalue[randomIndex].country_iso)
-    await storage.setItem("node_id",oldvalue[randomIndex].node_id)
-    await storage.setItem("node_price",oldvalue[randomIndex].traffic_price)
-    setcountryName(country)
-    setcountry(oldvalue[randomIndex].country_iso)
-    setnodeId(oldvalue[randomIndex].node_id)
-    setnodePrice(oldvalue[randomIndex].traffic_price)
-    closeList();
+  const CloseModel = async (country:string,data:countryInfoType, nodeData:NodeDataType[], auto:boolean, nodeid?:number, node_price?:number) =>{
+    const avgPrice: number = await storage.getItem("avgPrice")
+    if(auto){
+        const countries = Object.keys(data);
+        let randomCountryIndex = Math.floor(countries.length* Math.random());
+        let randomCountry = countries[randomCountryIndex];
+        let eligibleNodes = data[randomCountry].filter(node => node.traffic_price*0.01 <= avgPrice && node.traffic_price*0.01 <= parseFloat(balanceValue));
+        while (!eligibleNodes || eligibleNodes.length === 0) {
+          randomCountryIndex = Math.floor(countries.length * Math.random());
+          randomCountry = countries[randomCountryIndex];
+          eligibleNodes = data[randomCountry]?.filter(node => node.traffic_price*0.01 <= avgPrice && node.traffic_price*0.01 <= parseFloat(balanceValue));
+        }
+        const randomIndex = Math.floor(Math.random() * eligibleNodes.length);
+        let singleNodeData:NodeDataType
+        for (const node of nodeData) {
+          if (node.node_id === eligibleNodes[randomIndex].node_id) {
+            singleNodeData = node;
+            break;
+          }
+        }
+        const selectedNodeData : NodeStorageData = {
+          country_iso:data[randomCountry][0].country_iso,
+          country_name:randomCountry,
+          node_id:eligibleNodes[randomIndex].node_id,
+          traffic_price:eligibleNodes[randomIndex].traffic_price,
+          download_speed:singleNodeData.download,
+          upload_speed:singleNodeData.upload
+        }
+        await storage.setItem("selectedNodeData", selectedNodeData)
+    }
+    else{
+      if(!advancedView){
+        let oldvalue: {
+          node_id: number; 
+          traffic_price: number 
+          country_iso: string   
+        }[] =[]
+        data[country].forEach((value)=>{
+          if(value.traffic_price*0.01 <= avgPrice && value.traffic_price*0.01 <= parseFloat(balanceValue))
+          oldvalue.push(value)
+        })
+        let lastSelectedNodeIndex = await storage.getItem<number>('lastSelectedNodeIndex');
+        if (lastSelectedNodeIndex === undefined || lastSelectedNodeIndex >= oldvalue.length || countryName!=country) {
+          lastSelectedNodeIndex = 0;
+        }
+        const nextNodeIndex = (lastSelectedNodeIndex + 1) % oldvalue.length;    
+        let singleNodeData:NodeDataType
+        for (const node of nodeData) {
+          if (node.node_id === oldvalue[nextNodeIndex].node_id) {
+            singleNodeData = node;
+            break;
+          }
+        }
+        const selectedNodeData : NodeStorageData = {
+          country_iso:oldvalue[nextNodeIndex].country_iso,
+          country_name:country,
+          node_id:oldvalue[nextNodeIndex].node_id,
+          traffic_price:oldvalue[nextNodeIndex].traffic_price,
+          download_speed:singleNodeData.download,
+          upload_speed:singleNodeData.upload
+        }
+        await storage.setItem("lastSelectedNodeIndex", nextNodeIndex)
+        await storage.setItem("selectedNodeData", selectedNodeData)
+      }
+      else{
+        let singleNodeData:NodeDataType
+        for (const node of nodeData) {
+          if (node.node_id === nodeid) {
+            singleNodeData = node;
+            break;
+          }
+        }
+        const selectedNodeData : NodeStorageData = {
+          country_iso:data[country][0].country_iso,
+          country_name:country,
+          node_id:nodeid,
+          traffic_price:node_price,
+          download_speed:singleNodeData.download,
+          upload_speed:singleNodeData.upload
+        }
+        await storage.setItem("selectedNodeData", selectedNodeData)
+        }
+      }
+      closeList();
+      if(proxyStatus=="Connected"){
+        await disconnect()
+        await connect(nodeId)
+      
+     }
   }
 
   const getData = async () => {
+    const selectedNodeData = await storage.getItem<NodeStorageData>("selectedNodeData")
+    setcountryName(selectedNodeData.country_name)
+    setcountry(selectedNodeData.country_iso)
+    setnodeId(selectedNodeData.node_id)
+    setnodePrice(selectedNodeData.traffic_price)
+    setNodeDownload(selectedNodeData.download_speed)
+    setNodeUpload(selectedNodeData.upload_speed)
+
     setBalanceValue(await storage.getItem("balance"))
-    setcountryName(await storage.getItem("country_name"))
-    setcountry(await storage.getItem("country"))
-    setnodeId(await storage.getItem("node_id"))
-    setnodePrice(await storage.getItem("node_price"))
     setProxyStatus(await storage.getItem("proxyStatus"))
     setcountryConnected(await storage.getItem("countryConnected"))
     setcountryLocal(await storage.getItem("countryLocal"))
@@ -69,6 +143,10 @@ function Home() {
     setcityLocal(await storage.getItem("cityLocal"))
     setipConnected(await storage.getItem("ipConnected"))
     setipLocal(await storage.getItem("ipLocal"))
+    setAdvancedView(await storage.getItem("advancedView"))
+    if(proxyStatus==undefined){
+      await storage.setItem("proxyStatus",await proxy.getState())
+    }
   }
 
   const balance = ()=>{
@@ -85,10 +163,34 @@ function Home() {
     storage.watch({"ipConnected":(key)=>{setipConnected(key.newValue)}})
   }
 
+  const listenNodeInfo = ()=>{
+    storage.watch({"selectedNodeData":(key)=>{
+      const selectedNodeData :NodeStorageData = key.newValue
+      setcountryName(selectedNodeData.country_name)
+      setcountry(selectedNodeData.country_iso)
+      setnodeId(selectedNodeData.node_id)
+      setnodePrice(selectedNodeData.traffic_price)
+      setNodeDownload(selectedNodeData.download_speed)
+      setNodeUpload(selectedNodeData.upload_speed)
+      
+    }})
+
+    storage.watch({"node_id":(key)=>{setnodeId(key.newValue)}})
+    storage.watch({"node_price":(key)=>{setnodePrice(key.newValue)}})
+    storage.watch({"country":(key)=>{setcountry(key.newValue)}})
+    storage.watch({"country_name":(key)=>{setcountryName(key.newValue)}})
+    storage.watch({"node_download_speed":(key)=>{setNodeDownload(key.newValue)}})
+    storage.watch({"node_upload_speed":(key)=>{setNodeUpload(key.newValue)}})
+  }
+
   const listenLocalInfo = ()=>{
     storage.watch({"countryLocal":(key)=>{setcountryLocal(key.newValue)}})
     storage.watch({"cityLocal":(key)=>{setcityLocal(key.newValue)}})
     storage.watch({"ipLocal":(key)=>{setipLocal(key.newValue)}})
+  }
+
+  async function listenSettings() {
+    storage.watch({"advancedView":(key)=>{setAdvancedView(key.newValue)}})
   }
 
   useEffect(()=>{
@@ -97,6 +199,8 @@ function Home() {
     listenProxyStatus()
     listenConnectionInfo()
     listenLocalInfo()
+    listenSettings()
+    listenNodeInfo()
   },[])
 
   return (
@@ -110,13 +214,6 @@ function Home() {
           <Settings />
         </Modal>
         <Modal centered size="auto" opened={openedList} onClose={closeList} scrollAreaComponent={ScrollArea.Autosize} styles={{ title: { color: 'white' } }} overlayProps={{blur: 2,}} style={{color:"white"}} title="Select Country">
-          <Modal.Title mb={10}>
-            <Group position="apart">
-            <Box w={50}></Box>
-            <Text style={{textAlign:"center"}}>Country</Text>
-            <Text>Ø/GB</Text>
-            </Group>
-            </Modal.Title>
           <List close={CloseModel} />
         </Modal>
         <Stack spacing="xs">
@@ -130,7 +227,7 @@ function Home() {
         <Group position="center">
           <Button style={{borderColor:"purple"}} variant="outline" rightIcon={<RiEdit2Line color="white" />} onClick={openList}>
             <Group position="apart">
-            <FlagIcon />
+            <FlagIcon country={country} />
             <Text c="white">{countryName}</Text>
           </Group>
           </Button>
@@ -144,7 +241,23 @@ function Home() {
         </Group>
         <Group position="center">
           <Group w={200} position="apart">
-              <DetailCircle data={(proxyStatus=="Connecting" || proxyStatus=="Connected" ) ? nodeId.toString() : ".."} title="NODE" icon={<FaServer color="cyan" />} />
+            <HoverCard width="auto" shadow="md" disabled={proxyStatus=="Disconnected"}>
+                <HoverCard.Target>
+                  <div>
+                  <DetailCircle data={(proxyStatus=="Connecting" || proxyStatus=="Connected" ) ? nodeId.toString() : ".."} title="NODE" icon={<FaServer color="cyan" />} ></DetailCircle>
+                  </div>
+                </HoverCard.Target>
+                <HoverCard.Dropdown style={{border:"1px solid grey"}}>
+                  <Group>
+                    <RiArrowDownFill />
+                    <Text>{nodeDownload} Mbps</Text>
+                  </Group>
+                  <Group>
+                    <RiArrowUpFill />
+                    <Text>{nodeUpload} Mbps</Text>
+                  </Group>
+                </HoverCard.Dropdown>
+              </HoverCard>
               <DetailCircle data={(proxyStatus=="Connecting" || proxyStatus=="Connected" ) ? (nodePrice / 100).toFixed(2).toString() : "0"} title="Cost/GB" icon={<Text style={{fontWeight:"bold", color:"cyan"}}>Ø</Text>} />
           </Group>
         </Group>

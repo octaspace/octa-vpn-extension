@@ -1,5 +1,5 @@
 import { Box, Stack, Text } from "@mantine/core";
-import type { ReactNode } from "react";
+import { forwardRef, type ReactNode } from "react";
 
 interface DetailCircleProps{
     icon:ReactNode
@@ -7,11 +7,11 @@ interface DetailCircleProps{
     title:string
 }
 
-export function DetailCircle({icon,data,title}:DetailCircleProps){
-    return(
+export const DetailCircle = forwardRef<HTMLDivElement, DetailCircleProps>(
+    ({ icon, data, title }, ref) => (  
         <>
         <Stack h={150} w={50} align="center" spacing="xs">
-        <Box h={50} w={50} style={{
+        <Box ref={ref} h={50} w={50} style={{
               border:"2px solid cyan",
                 justifyContent:"center",
                 alignItems:"center",
@@ -26,4 +26,4 @@ export function DetailCircle({icon,data,title}:DetailCircleProps){
         </Stack>
         </>
     )
-}
+  );

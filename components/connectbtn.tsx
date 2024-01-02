@@ -42,7 +42,7 @@ export function HomeButton({node_id}:HomeButtonProps){
 
     return(
         <>
-        <UnstyledButton onClick={()=>{Status=="Disconnected" ? connect(node_id): disconnect()}}>
+        <UnstyledButton onClick={()=>{console.log(Status);Status=="Disconnected" ? connect(node_id): disconnect()}}>
             <div style={{
                 justifyContent:"center",
                 alignItems:"center",

@@ -11,6 +11,7 @@ import { wait } from "~helpers/wait";
 import { ApiError, Octa } from "@octaspace/api.js";
 import { BsEmojiDizzy } from "react-icons/bs";
 import { LocalInfo } from "~helpers/localinfo";
+import { proxy } from "~background";
 
 export type SelectedVPNNode = {
   node_id: number;
@@ -18,6 +19,13 @@ export type SelectedVPNNode = {
   country_iso: string;
   traffic_price: number;
 };
+
+export type NodeDataType = {
+  node_id: number;
+  download:string;
+  upload:string;
+};
+
 
 export type countryInfoType = { 
   [country: string]: { 
@@ -30,41 +38,66 @@ export function Load(){
   const [applyScale, setApplyScale] = useState(false);
   const [zIndexValue, setZIndexValue] = useState(5);
 
+  async function saveCountryData(selectedData){
+    let groupedData: countryInfoType = selectedData.reduce((acc, node) => {
+      const { country, node_id, traffic_price, country_iso } = node;
+      acc[country] = acc[country] || [];
+      acc[country].push({ node_id, traffic_price, country_iso });
+      return acc;
+  }, {});
+    selectedData.sort((a, b) => a.country.localeCompare(b.country));
+    for (const country in groupedData) {
+      groupedData[country].sort((a, b) => a.traffic_price - b.traffic_price);
+    }
+    const countryKeys = Object.keys(groupedData);
+    const countryPerChunk = 1;
+    for (let i = 0; i < countryKeys.length; i += countryPerChunk) {
+      const chunkKeys = countryKeys.slice(i, i + countryPerChunk);
+      const chunk: countryInfoType = {};
+    
+      chunkKeys.forEach((countryKey) => {
+        chunk[countryKey] = groupedData[countryKey];
+      });
+      await storage.setItem("countryInfoChunks",i/countryPerChunk)
+      await storage.setItem(`countryInfo${i / countryPerChunk}`, chunk);
+    }
+  }
+
+  async function saveNodeData(selectedData: NodeDataType[]) {
+    const nodesPerChunk = 50;
+    for (let i = 0; i < selectedData.length; i += nodesPerChunk) {
+      const chunk = selectedData.slice(i, i + nodesPerChunk);
+      const chunkNumber = Math.floor(i / nodesPerChunk);
+      await storage.setItem("nodeInfoChunks", chunkNumber);
+      await storage.setItem(`nodeInfo${chunkNumber}`, chunk);
+    }
+  }
+
   async function loadNodes() {
     try{
       let timestamp:number = await storage.getItem("last_interacted")
+      let nodeDataChunks = await storage.getItem("nodeInfoChunks")
+      let countryDataChunks = await storage.getItem("countryInfoChunks")
+      let avgPrice:number = await storage.getItem("avgPrice")
       //fetch new data not before 2 hours
-      if((Date.now()-timestamp)>7200000){
+      if((Date.now()-timestamp)>7200000||nodeDataChunks==undefined||countryDataChunks==undefined||avgPrice==0.00){
         LocalInfo()
         let data:vpnNodes[] = await new Octa(await storage.getItem("token")).getVPNNodes()
-        let selectedData: SelectedVPNNode[] = data.map(node => ({
+        const avgTrafficPrice:number = parseFloat((data.reduce((sum, node) => sum + (node.traffic_price * 0.01), 0) / data.length).toFixed(2));
+        await storage.setItem("avgPrice",avgTrafficPrice)
+        let countryData: SelectedVPNNode[] = data.map(node => ({
           node_id: node.node_id,
           country: node.country,
           country_iso: node.country_iso.toUpperCase(),
           traffic_price: node.traffic_price
         }));
-        let groupedData: countryInfoType = selectedData.reduce((acc, node) => {
-          const { country, node_id, traffic_price, country_iso } = node;
-          acc[country] = acc[country] || [];
-          acc[country].push({ node_id, traffic_price, country_iso });
-          return acc;
-      }, {});
-        selectedData.sort((a, b) => a.country.localeCompare(b.country));
-        for (const country in groupedData) {
-          groupedData[country].sort((a, b) => a.traffic_price - b.traffic_price);
-        }
-        const countryKeys = Object.keys(groupedData);
-        const countryPerChunk = 10;
-        for (let i = 0; i < countryKeys.length; i += countryPerChunk) {
-          const chunkKeys = countryKeys.slice(i, i + countryPerChunk);
-          const chunk: countryInfoType = {};
-        
-          chunkKeys.forEach((countryKey) => {
-            chunk[countryKey] = groupedData[countryKey];
-          });
-          await storage.setItem("countryInfoChunks",i/countryPerChunk)
-          await storage.setItem(`countryInfo${i / countryPerChunk}`, chunk);
-        }
+        let nodeData: NodeDataType[] = data.map(node => ({
+          node_id: node.node_id,
+          download: (node.net_down_mbs/1000000).toFixed(2),
+          upload: (node.net_up_mbs/1000000).toFixed(2),
+        }));
+        await saveCountryData(countryData)
+        await saveNodeData(nodeData)
         let balance = ((await new Octa(await storage.getItem("token")).getAccountBalance()).balance * 1e-18).toFixed(3)
         await storage.setItem("balance",balance)
       }

@@ -1,20 +1,11 @@
 import { Text } from '@mantine/core';
 import * as CountryIcons from 'country-flag-icons/react/3x2'
-import { useEffect, useState } from 'react';
-import { storage } from '~helpers/storage';
 
+interface FlagIconProps{
+    country:string
+}
 
-export function FlagIcon(){
-    const [country, setCountry] = useState("");
-    storage.watch({"country":(key)=>{setCountry(key.newValue)}})
-
-    const loadCountry = async () =>{
-        setCountry(await storage.getItem("country"))
-    }
-
-    useEffect(()=>{
-        loadCountry()
-    },[country])
+export function FlagIcon({country}:FlagIconProps){
 
     const CountryIconComponent = CountryIcons[country];
     return(

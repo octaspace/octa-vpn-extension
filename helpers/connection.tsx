@@ -13,6 +13,10 @@ export async function connect(nodeid:number) {
             NotifiyError("Please choose a Node",<FaFaceSmile />)
             return
         }
+        if(await storage.getItem("balance")<await storage.getItem("node_price")){
+            NotifiyError("Low Balance for selected Node",<BsEmojiDizzy />)
+            return
+        }
         await storage.setItem("proxyStatus","Connecting")
         let balance = ((await new Octa(await storage.getItem("token")).getAccountBalance()).balance * 1e-18).toFixed(3)
         await storage.setItem("balance",balance)

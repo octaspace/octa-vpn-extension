@@ -4,6 +4,9 @@ export class ProxyService{
     private state:ProxyState
 
     constructor() {
+    }
+
+    setState(){
         chrome.proxy.settings.get(
             { 'incognito': false },
             function (config) {
@@ -22,10 +25,29 @@ export class ProxyService{
         );
     }
 
-    getState():ProxyState{
-        return this.state;
+    getState() {
+        return new Promise((resolve, reject) => {
+            if (this.state !== undefined) {
+                resolve(this.state);
+            } else {
+                chrome.proxy.settings.get({ 'incognito': false }, (config) => {
+                    if (config.levelOfControl === "controlled_by_this_extension" || config.levelOfControl === "controllable_by_this_extension") {
+                        if (config.value.mode === "fixed_servers") {
+                            this.state = "Connected";
+                            resolve(this.state);
+                        } else {
+                            this.state = "Disconnected";
+                            resolve(this.state);
+                        }
+                    } else {
+                        this.state = "NoPermission";
+                        resolve(this.state);
+                    }
+                });
+            }
+        });
     }
-
+    
     updateState(){
         chrome.proxy.settings.onChange.addListener(
             function(config) {
