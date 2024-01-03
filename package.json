@@ -39,7 +39,9 @@
       "storage"
     ],
     "host_permissions": [
-      "https://*/*"
+      "https://api.octa.space/v1/*",
+      "https://ifconfig.octa.space/json",
+      "https://raw.githubusercontent.com/octaspace/octaspace/main/tos_octavpn.md"
     ]
   }
 }
