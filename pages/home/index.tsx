@@ -64,6 +64,7 @@ function Home() {
           upload_speed:singleNodeData.upload
         }
         await storage.setItem("selectedNodeData", selectedNodeData)
+        reconnect(eligibleNodes[randomIndex].node_id)
     }
     else{
       if(!advancedView){
@@ -98,6 +99,7 @@ function Home() {
         }
         await storage.setItem("lastSelectedNodeIndex", nextNodeIndex)
         await storage.setItem("selectedNodeData", selectedNodeData)
+        reconnect(oldvalue[nextNodeIndex].node_id)
       }
       else{
         let singleNodeData:NodeDataType
@@ -116,14 +118,17 @@ function Home() {
           upload_speed:singleNodeData.upload
         }
         await storage.setItem("selectedNodeData", selectedNodeData)
+        reconnect(nodeid)
         }
       }
       closeList();
-      if(proxyStatus=="Connected"){
-        await disconnect()
-        await connect(nodeId)
-      
-     }
+  }
+
+  const reconnect = async (node:number)=>{
+    if(proxyStatus=="Connected"){
+      await disconnect()
+      await connect(node)
+   }
   }
 
   const getData = async () => {
