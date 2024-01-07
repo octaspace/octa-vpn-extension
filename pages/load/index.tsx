@@ -6,7 +6,7 @@ import { updateBalance } from "~helpers/balance";
 import { NotifiyError } from "~components/notifiyerror";
 import { RiGlobalLine } from "react-icons/ri";
 import type { vpnNodes } from "@octaspace/api.js/build/src/types";
-import { storage } from "~helpers/storage";
+import { secureStorage, storage } from "~helpers/storage";
 import { wait } from "~helpers/wait";
 import { ApiError, Octa } from "@octaspace/api.js";
 import { BsEmojiDizzy } from "react-icons/bs";
@@ -82,7 +82,7 @@ export function Load(){
       //fetch new data not before 2 hours
       if((Date.now()-timestamp)>7200000||nodeDataChunks==undefined||countryDataChunks==undefined||avgPrice==0.00){
         LocalInfo()
-        let data:vpnNodes[] = await new Octa(await storage.getItem("token")).getVPNNodes()
+        let data:vpnNodes[] = await new Octa(await secureStorage.getItem("token")).getVPNNodes()
         const avgTrafficPrice:number = parseFloat((data.reduce((sum, node) => sum + (node.traffic_price * 0.01), 0) / data.length).toFixed(2));
         await storage.setItem("avgPrice",avgTrafficPrice)
         let countryData: SelectedVPNNode[] = data.map(node => ({
@@ -98,7 +98,7 @@ export function Load(){
         }));
         await saveCountryData(countryData)
         await saveNodeData(nodeData)
-        let balance = ((await new Octa(await storage.getItem("token")).getAccountBalance()).balance * 1e-18).toFixed(3)
+        let balance = ((await new Octa(await secureStorage.getItem("token")).getAccountBalance()).balance * 1e-18).toFixed(3)
         await storage.setItem("balance",balance)
       }
       await storage.setItem("last_interacted",Date.now())

@@ -125,7 +125,7 @@ function Home() {
   }
 
   const reconnect = async (node:number)=>{
-    if(proxyStatus=="Connected"){
+    if(proxyStatus=="Connected"||proxyStatus=="Connecting"){
       await disconnect()
       await connect(node)
    }

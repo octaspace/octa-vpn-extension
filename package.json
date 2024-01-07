@@ -5,8 +5,8 @@
   "description": "OCTA VPN for browsers",
   "author": "",
   "scripts": {
-    "dev": "plasmo dev --verbose",
-    "build": "plasmo build",
+    "dev": "plasmo dev --target=firefox-mv2 --verbose",
+    "build": "plasmo build --target=firefox-mv2",
     "test": "plasmo test"
   },
   "dependencies": {
@@ -34,6 +34,11 @@
     "typescript": "5.1.6"
   },
   "manifest": {
+    "browser_specific_settings": {
+      "gecko": {
+        "id": "octavpn@temporary-addon-id"
+      }
+    },
     "permissions": [
       "proxy",
       "storage"

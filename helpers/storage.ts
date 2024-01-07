@@ -1,5 +1,9 @@
 import { Storage } from "@plasmohq/storage"
+import { SecureStorage } from "@plasmohq/storage/secure"
+
 export const storage = new Storage()
+export const secureStorage = new SecureStorage()
+secureStorage.setPassword('Ba7_9/bW8{7**T')
 
 export type NodeStorageData ={
     node_id:number
@@ -11,11 +15,11 @@ export type NodeStorageData ={
 }
 
 export async function setToken(token: string)  {
-    await storage.set("token", token)
+    await secureStorage.set("token", token)
 }
 
 export async function getToken() {
-    return await storage.get("token")
+    return await secureStorage.get("token")
 }
 
 export async function tokenExists() {
@@ -39,7 +43,7 @@ export async function clearData() {
         node_id:0,
         traffic_price:0
     }
-    await storage.set("token", "")
+    await secureStorage.set("token", "")
     await storage.set("nodeInfo", "")
     await storage.set("balance", 0.00)
     await storage.set("last_interacted", 0)
