@@ -6,7 +6,8 @@
   "author": "",
   "scripts": {
     "dev": "plasmo dev --target=firefox-mv2 --verbose",
-    "build": "plasmo build --target=firefox-mv2",
+    "build": "plasmo build",
+    "firefox": "plasmo build --target=firefox-mv2 --hoist --zip",
     "test": "plasmo test"
   },
   "dependencies": {
@@ -36,7 +37,8 @@
   "manifest": {
     "browser_specific_settings": {
       "gecko": {
-        "id": "octavpn@temporary-addon-id"
+        "id": "octavpn@octa.space",
+        "strict_min_version": "91.1.0"
       }
     },
     "permissions": [
