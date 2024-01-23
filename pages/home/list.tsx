@@ -1,7 +1,7 @@
-import { Box, Button, Group, Modal, Stack, Text, UnstyledButton } from "@mantine/core";
+import { Box, Button, Group, HoverCard, Modal, Stack, Switch, Text, UnstyledButton } from "@mantine/core";
 import * as CountryIcons from 'country-flag-icons/react/3x2'
 import { useEffect, useState } from "react";
-import { FaArrowLeft } from "react-icons/fa6";
+import { FaArrowLeft, FaCircleInfo } from "react-icons/fa6";
 import { storage } from "~helpers/storage";
 import type { NodeDataType, countryInfoType } from "~pages/load";
 import { FcGlobe } from "react-icons/fc";
@@ -27,6 +27,14 @@ interface ListParam {
     async function loadValues() {
       setAdvancedView(await storage.getItem("advancedView"))
       setAvgPrice(await storage.getItem("avgPrice"))
+    }
+
+    async function listenValues() {
+      storage.watch({"advancedView":(key)=>{setAdvancedView(key.newValue)}})
+    }
+
+    async function setAdvView(value:boolean) {
+      await storage.setItem("advancedView",value)
     }
 
     const fetchCountryData = async () => {
@@ -65,6 +73,7 @@ interface ListParam {
       loadValues()
       fetchCountryData()
       fetchNodeData()
+      listenValues()
     }, []);
   
     const sortedEntries = Object.entries(countryInfo ?? {})
@@ -85,6 +94,22 @@ interface ListParam {
           </>
         ) : (
           <>
+          <Group position="apart" style={{ borderWidth: 2, borderColor: 'grey', borderStyle: 'solid', borderRadius: 10, padding: 5 }}>
+            <Group>
+              <Text c="white">Advanced View</Text>
+              <HoverCard width={240} shadow="md">
+                      <HoverCard.Target>
+                        <div>
+                        <FaCircleInfo color="#8B68FF" />
+                        </div>
+                      </HoverCard.Target>
+                      <HoverCard.Dropdown style={{border:"1px solid grey"}}>
+                        {advancedView ? <Text c="white">Disable this to select nodes randomly</Text> : <Text c="white">Enable this to Manually choose the Node</Text> }
+                      </HoverCard.Dropdown>
+                    </HoverCard>
+            </Group>
+            <Switch checked={advancedView} onChange={(event)=>{setAdvView(event.currentTarget.checked);setSelectedCountry(null)}}/>
+          </Group>
           {advancedView ? <NodeList close={close} countryName={selectedCountry} nodeData={nodeData} countryInfo={countryInfo} /> : ""}
           {selectedCountry==null ? <>
             <Stack w={280}>

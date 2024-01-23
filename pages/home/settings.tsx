@@ -52,7 +52,7 @@ function Settings() {
     <Stack>
     <Group position="apart" style={{ borderWidth: 2, borderColor: 'grey', borderStyle: 'solid', borderRadius: 10, padding: 5 }}>
         <Group>
-          <Text>Advanced View</Text>
+          <Text c="white">Advanced View</Text>
           <HoverCard width={240} shadow="md">
                   <HoverCard.Target>
                     <div>
