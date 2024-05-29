@@ -1,8 +1,8 @@
 import { Storage } from "@plasmohq/storage"
 import { SecureStorage } from "@plasmohq/storage/secure"
 
-export const storage = new Storage()
-export const secureStorage = new SecureStorage()
+export const storage = new Storage({area:"local"})
+export const secureStorage = new SecureStorage({area:"local"})
 secureStorage.setPassword('Ba7_9/bW8{7**T')
 
 export type NodeStorageData ={
