@@ -1,32 +1,15 @@
-import { useEffect, useState } from "react"
-import Login from "~pages/login";
-import Home from "~pages/home";
-import { secureStorage, tokenExists } from "~helpers/storage";
-import { Loader } from '@mantine/core';
 import { ThemeProvider } from "~theme";
-import { storage } from "~helpers/storage";
+import { MemoryRouter } from "react-router-dom"
+import { Routing } from "~helpers/routing";
 
 function IndexPopup() {
-  const [isLoggedIn, setisLoggedIn] = useState(false)
-  const [isLoading, setisLoading] = useState(true)
-
-  useEffect(()=>{
-    secureStorage.watch({"token":()=>{fetchData()}})
-    async function fetchData() {
-        setisLoggedIn(await tokenExists())
-        setisLoading(true)
-    }
-    fetchData();
-})
   return (
-    <>
     <ThemeProvider withNormalizeCSS withGlobalStyles>
-
-        {isLoading ?? <Loader />}
-        {isLoggedIn ? <Home /> : <Login />}
-      </ThemeProvider>
-      </>
-  )
+      <MemoryRouter>
+      <Routing />
+    </MemoryRouter>
+    </ThemeProvider>
+  );
 }
 
-export default IndexPopup
+export default IndexPopup;

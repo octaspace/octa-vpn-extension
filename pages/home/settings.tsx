@@ -1,12 +1,14 @@
 import { Button, Group, HoverCard, NumberInput, Stack, Switch, Text } from "@mantine/core";
 import { useEffect, useState } from "react";
 import { FaCircleInfo } from "react-icons/fa6";
+import { useNavigate } from "react-router-dom";
 import { disconnect } from "~helpers/connection";
 import { clearData, storage } from "~helpers/storage";
 
 function Settings() {
   const [advancedView, setAdvancedView] = useState(false)
   const [maxPrice, setMaxPrice] = useState(0.00)
+  const navigate = useNavigate();
 
   const version = "v0.0.1"
 
@@ -46,6 +48,7 @@ function Settings() {
     if(proxyStatus=="Connected"||proxyStatus=="Connecting"){
       disconnect()
     }
+    navigate('/')
   }
   return (
     <>

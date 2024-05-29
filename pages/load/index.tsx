@@ -11,7 +11,6 @@ import { wait } from "~helpers/wait";
 import { ApiError, Octa } from "@octaspace/api.js";
 import { BsEmojiDizzy } from "react-icons/bs";
 import { LocalInfo } from "~helpers/localinfo";
-import { proxy } from "~background";
 
 export type SelectedVPNNode = {
   node_id: number;

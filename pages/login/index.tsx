@@ -10,12 +10,14 @@ import { wait } from "~helpers/wait";
 import { FaCircleCheck } from "react-icons/fa6";
 import { TOS } from "./tos";
 import { useDisclosure } from "@mantine/hooks";
+import { useNavigate } from "react-router-dom";
 
 function Login() {
   const [IsLoading, setIsLoading] = useState(false)
   const [Status, setStatus] = useState(false)
   const [BtnColor, setBtnColor] = useState("")
   const [openedTOS, { open:openTOS, close:closeTOS }] = useDisclosure(false);
+  const navigate = useNavigate();
 
   async function submit(apikey:string) {
     try{
@@ -27,6 +29,7 @@ function Login() {
       setStatus(true)
       await wait(1000)
       setToken(apikey);
+      navigate('/home')
     }
     catch(err:any){
       setIsLoading(false)
