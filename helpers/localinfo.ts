@@ -1,9 +1,11 @@
 import fetch from 'node-fetch';
 import { storage } from './storage';
+import { time } from 'console';
+import { wait } from './wait';
 
 type InterfaceBody = {
     ip:string
-    region_name?:string
+    city?:string
     country?:string
 }
 
@@ -13,12 +15,12 @@ export async function LocalInfo(){
         if(proxyStatus=="Connected"){
             return
         }
-        const response = await fetch("https://ifconfig.octa.space/json",{method: 'GET',headers: {'Content-Type': 'application/json'}});
+        const response = await fetch("https://ifconfig.octa.computer",{method: 'GET',headers: {'X-OCTA-APP':'web-desktop'}});
         if(response.status==200){
             const data: InterfaceBody = await response.json();
             await storage.setItem("ipLocal",data.ip)
             await storage.setItem("countryLocal",data.country)
-            await storage.setItem("cityLocal",data.region_name)
+            await storage.setItem("cityLocal",data.city)
         }
     }
     catch(err:any){

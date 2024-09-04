@@ -48,7 +48,7 @@
     ],
     "host_permissions": [
       "https://api.octa.space/v1/*",
-      "https://ifconfig.octa.space/json",
+      "https://ifconfig.octa.computer/*",
       "https://raw.githubusercontent.com/octaspace/octaspace/main/tos_octavpn.md"
     ]
   }
