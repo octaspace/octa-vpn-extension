@@ -3,7 +3,6 @@ import { SecureStorage } from "@plasmohq/storage/secure"
 
 export const storage = new Storage({area:"local"})
 export const secureStorage = new SecureStorage({area:"local"})
-secureStorage.setPassword('Ba7_9/bW8{7**T')
 
 export type NodeStorageData ={
     node_id:number
@@ -12,6 +11,10 @@ export type NodeStorageData ={
     traffic_price:number
     download_speed:string
     upload_speed:string
+}
+
+export async function initSecureStorage()  {
+    await secureStorage.setPassword('Ba7_9/bW8{7**T')
 }
 
 export async function setToken(token: string)  {

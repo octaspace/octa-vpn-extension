@@ -6,7 +6,7 @@
   "author": "",
   "scripts": {
     "dev": "plasmo dev --verbose",
-    "build": "plasmo build",
+    "build": "plasmo build --target=firefox-mv2",
     "firefox": "plasmo build --target=firefox-mv2 --hoist --zip",
     "test": "plasmo test"
   },
@@ -43,8 +43,7 @@
       }
     },
     "permissions": [
-      "proxy",
-      "storage"
+      "proxy"
     ],
     "host_permissions": [
       "https://api.octa.space/v1/*",

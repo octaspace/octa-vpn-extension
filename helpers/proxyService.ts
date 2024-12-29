@@ -132,7 +132,7 @@ export class ProxyService{
                         host: ip,
                         port: port
                       },
-                      bypassList: ["<local>","127.0.0.1"]
+                      bypassList: ["<local>","127.0.0.1","api.octa.space"]
                     }
                   };
                   return new Promise((resolve) => {
@@ -149,7 +149,8 @@ export class ProxyService{
                 let config = {
                     proxyType: "manual",
                     http: `http://${ip}:${port}`,
-                    httpProxyAll: true
+                    httpProxyAll: true,
+                    passthrough: "api.octa.space",
                   };
                   return new Promise((resolve) => {
                     browser.proxy.settings.set(
