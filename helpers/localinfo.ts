@@ -1,7 +1,5 @@
 import fetch from 'node-fetch';
 import { storage } from './storage';
-import { time } from 'console';
-import { wait } from './wait';
 
 type InterfaceBody = {
     ip:string

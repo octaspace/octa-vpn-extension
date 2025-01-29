@@ -8,7 +8,7 @@ export type NodeStorageData ={
     node_id:number
     country_name:string
     country_iso:string
-    traffic_price:number
+    traffic_price_ether:number
     download_speed:string
     upload_speed:string
 }
@@ -44,7 +44,7 @@ export async function clearData() {
         download_speed:"0",
         upload_speed:"0",
         node_id:0,
-        traffic_price:0
+        traffic_price_ether:0
     }
     await secureStorage.set("token", "")
     await storage.set("nodeInfo", "")

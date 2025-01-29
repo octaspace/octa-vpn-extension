@@ -16,7 +16,7 @@ export type SelectedVPNNode = {
   node_id: number;
   country: string;
   country_iso: string;
-  traffic_price: number;
+  traffic_price_ether: number;
 };
 
 export type NodeDataType = {
@@ -29,7 +29,7 @@ export type NodeDataType = {
 export type countryInfoType = { 
   [country: string]: { 
     node_id: number; 
-    traffic_price: number 
+    traffic_price_ether: number 
     country_iso: string 
   }[]}
 
@@ -39,14 +39,14 @@ export function Load(){
 
   async function saveCountryData(selectedData){
     let groupedData: countryInfoType = selectedData.reduce((acc, node) => {
-      const { country, node_id, traffic_price, country_iso } = node;
+      const { country, node_id, traffic_price_ether, country_iso } = node;
       acc[country] = acc[country] || [];
-      acc[country].push({ node_id, traffic_price, country_iso });
+      acc[country].push({ node_id, traffic_price_ether, country_iso });
       return acc;
   }, {});
     selectedData.sort((a, b) => a.country.localeCompare(b.country));
     for (const country in groupedData) {
-      groupedData[country].sort((a, b) => a.traffic_price - b.traffic_price);
+      groupedData[country].sort((a, b) => a.traffic_price_ether - b.traffic_price_ether);
     }
     const countryKeys = Object.keys(groupedData);
     const countryPerChunk = 1;
@@ -82,18 +82,18 @@ export function Load(){
       if((Date.now()-timestamp)>7200000||nodeDataChunks==undefined||countryDataChunks==undefined||avgPrice==0.00){
         LocalInfo()
         let data:vpnNodes[] = await new Octa(await secureStorage.getItem("token")).getVPNNodes()
-        const avgTrafficPrice:number = parseFloat((data.reduce((sum, node) => sum + (node.traffic_price * 0.01), 0) / data.length).toFixed(2));
+        const avgTrafficPrice:number = parseFloat((data.reduce((sum, node) => sum + (node.traffic_price_ether), 0) / data.length).toFixed(2));
         await storage.setItem("avgPrice",avgTrafficPrice)
         let countryData: SelectedVPNNode[] = data.map(node => ({
           node_id: node.node_id,
           country: node.country,
           country_iso: node.country_iso.toUpperCase(),
-          traffic_price: node.traffic_price
+          traffic_price_ether: parseFloat((node.traffic_price_ether).toFixed(4))
         }));
         let nodeData: NodeDataType[] = data.map(node => ({
           node_id: node.node_id,
-          download: (node.net_down_mbs/1000000).toFixed(2),
-          upload: (node.net_up_mbs/1000000).toFixed(2),
+          download: (node.net_down_mbits/1000000).toFixed(2),
+          upload: (node.net_up_mbits/1000000).toFixed(2),
         }));
         await saveCountryData(countryData)
         await saveNodeData(nodeData)

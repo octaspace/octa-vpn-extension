@@ -77,7 +77,7 @@ interface ListParam {
     }, []);
   
     const sortedEntries = Object.entries(countryInfo ?? {})
-  .filter(([countryName, countryData]) => countryData[0].traffic_price * 0.01 <= avgPrice || advancedView)
+  .filter(([countryName, countryData]) => countryData[0].traffic_price_ether <= avgPrice || advancedView)
   .sort(([countryA], [countryB]) => countryA.localeCompare(countryB));
 
   const handleCountryClick = (countryName: string) => {
@@ -144,7 +144,7 @@ interface ListParam {
                     <Group position="apart">
                       <CountryIconComponent title={countryName} height={25} style={{ borderRadius: 5 }} />
                       {countryName.length>20 ? <><Text color="white" style={{textAlign:"center",fontSize:"14px"}}>{countryName}</Text></> : <><Text color="white" style={{textAlign:"center"}}>{countryName}</Text></>}
-                      <Text color="white">{(countryData[0].traffic_price*0.01).toString()}</Text>
+                      <Text color="white">{(countryData[0].traffic_price_ether).toString()}</Text>
                     </Group>
                   </UnstyledButton>
                 );
@@ -174,7 +174,7 @@ interface ListParam {
     const handleNodeClick = (nodeId: number) => {
         const selectedCountryData = countryInfo?.[countryName];
         const selectedNode = selectedCountryData?.find((node) => node.node_id === nodeId);
-        close(countryName, countryInfo, nodeData, false, nodeId, selectedNode.traffic_price);
+        close(countryName, countryInfo, nodeData, false, nodeId, selectedNode.traffic_price_ether);
       }
 
     return (

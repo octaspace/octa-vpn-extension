@@ -41,11 +41,11 @@ function Home() {
         const countries = Object.keys(data);
         let randomCountryIndex = Math.floor(countries.length* Math.random());
         let randomCountry = countries[randomCountryIndex];
-        let eligibleNodes = data[randomCountry].filter(node => node.traffic_price*0.01 <= avgPrice && node.traffic_price*0.01 <= parseFloat(balanceValue));
+        let eligibleNodes = data[randomCountry].filter(node => node.traffic_price_ether <= avgPrice && node.traffic_price_ether <= parseFloat(balanceValue));
         while (!eligibleNodes || eligibleNodes.length === 0) {
           randomCountryIndex = Math.floor(countries.length * Math.random());
           randomCountry = countries[randomCountryIndex];
-          eligibleNodes = data[randomCountry]?.filter(node => node.traffic_price*0.01 <= avgPrice && node.traffic_price*0.01 <= parseFloat(balanceValue));
+          eligibleNodes = data[randomCountry]?.filter(node => node.traffic_price_ether <= avgPrice && node.traffic_price_ether <= parseFloat(balanceValue));
         }
         const randomIndex = Math.floor(Math.random() * eligibleNodes.length);
         let singleNodeData:NodeDataType
@@ -59,7 +59,7 @@ function Home() {
           country_iso:data[randomCountry][0].country_iso,
           country_name:randomCountry,
           node_id:eligibleNodes[randomIndex].node_id,
-          traffic_price:eligibleNodes[randomIndex].traffic_price,
+          traffic_price_ether:eligibleNodes[randomIndex].traffic_price_ether,
           download_speed:singleNodeData.download,
           upload_speed:singleNodeData.upload
         }
@@ -70,11 +70,11 @@ function Home() {
       if(!advancedView){
         let oldvalue: {
           node_id: number; 
-          traffic_price: number 
+          traffic_price_ether: number 
           country_iso: string   
         }[] =[]
         data[country].forEach((value)=>{
-          if(value.traffic_price*0.01 <= avgPrice && value.traffic_price*0.01 <= parseFloat(balanceValue))
+          if(value.traffic_price_ether <= avgPrice && value.traffic_price_ether <= parseFloat(balanceValue))
           oldvalue.push(value)
         })
         let lastSelectedNodeIndex = await storage.getItem<number>('lastSelectedNodeIndex');
@@ -93,7 +93,7 @@ function Home() {
           country_iso:oldvalue[nextNodeIndex].country_iso,
           country_name:country,
           node_id:oldvalue[nextNodeIndex].node_id,
-          traffic_price:oldvalue[nextNodeIndex].traffic_price,
+          traffic_price_ether:oldvalue[nextNodeIndex].traffic_price_ether,
           download_speed:singleNodeData.download,
           upload_speed:singleNodeData.upload
         }
@@ -113,7 +113,7 @@ function Home() {
           country_iso:data[country][0].country_iso,
           country_name:country,
           node_id:nodeid,
-          traffic_price:node_price,
+          traffic_price_ether:node_price,
           download_speed:singleNodeData.download,
           upload_speed:singleNodeData.upload
         }
@@ -136,7 +136,7 @@ function Home() {
     setcountryName(selectedNodeData.country_name)
     setcountry(selectedNodeData.country_iso)
     setnodeId(selectedNodeData.node_id)
-    setnodePrice(selectedNodeData.traffic_price)
+    setnodePrice(selectedNodeData.traffic_price_ether)
     setNodeDownload(selectedNodeData.download_speed)
     setNodeUpload(selectedNodeData.upload_speed)
 
@@ -174,7 +174,7 @@ function Home() {
       setcountryName(selectedNodeData.country_name)
       setcountry(selectedNodeData.country_iso)
       setnodeId(selectedNodeData.node_id)
-      setnodePrice(selectedNodeData.traffic_price)
+      setnodePrice(selectedNodeData.traffic_price_ether)
       setNodeDownload(selectedNodeData.download_speed)
       setNodeUpload(selectedNodeData.upload_speed)
       
@@ -263,7 +263,7 @@ function Home() {
                   </Group>
                 </HoverCard.Dropdown>
               </HoverCard>
-              <DetailCircle data={(proxyStatus=="Connecting" || proxyStatus=="Connected" ) ? (nodePrice / 100).toFixed(2).toString() : "0"} title="Cost/GB" icon={<Text style={{fontWeight:"bold", color:"cyan"}}>Ø</Text>} />
+              <DetailCircle data={(proxyStatus=="Connecting" || proxyStatus=="Connected" ) ? nodePrice.toFixed(4).toString() : "0"} title="Cost/GB" icon={<Text style={{fontWeight:"bold", color:"cyan"}}>Ø</Text>} />
           </Group>
         </Group>
         </Stack>
