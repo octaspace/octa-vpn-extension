@@ -90,7 +90,7 @@ function Login() {
           <TextInput  name="apikey" styles={{label:{color:"white"}}}
           icon={<RiKeyFill color="white" />} 
           placeholder="Enter your API key"
-          rightSection={<ActionIcon color="dark" onClick={() => window.open("https://cube.octa.space/settings")} variant="filled"><RiQuestionLine size={14} /></ActionIcon>}
+          rightSection={<ActionIcon color="dark" onClick={() => window.open("https://cube.octa.computer/profile")} variant="filled"><RiQuestionLine size={14} /></ActionIcon>}
           {...form.getInputProps('apikey')} />
           <Text ta="center" fw="bold">By proceeding you agree to Octa.Space terms</Text>
           <Button bg={BtnColor} onClick={openTOS} styles={{root:{"&:hover":{backgroundColor:BtnColor}}}} loading={IsLoading} fullWidth mt="sm">
