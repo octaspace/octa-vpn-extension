@@ -46,7 +46,7 @@
       "proxy"
     ],
     "host_permissions": [
-      "https://api.octa.space/v1/*",
+      "https://api.octa.computer/*",
       "https://ifconfig.octa.computer/*",
       "https://raw.githubusercontent.com/octaspace/octaspace/main/tos_octavpn.md"
     ]
