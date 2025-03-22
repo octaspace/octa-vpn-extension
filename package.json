@@ -16,7 +16,7 @@
     "@mantine/form": "^7.3.2",
     "@mantine/hooks": "6.0.21",
     "@mantine/notifications": "6.0.21",
-    "@octaspace/api.js": "^1.0.4",
+    "@octaspace/api.js": "^1.0.5",
     "@plasmohq/storage": "1.8.0",
     "country-flag-icons": "^1.5.9",
     "plasmo": "0.84.0",
@@ -46,6 +46,7 @@
       "proxy"
     ],
     "host_permissions": [
+      "https://api.octa.space/*",
       "https://api.octa.computer/*",
       "https://ifconfig.octa.computer/*",
       "https://raw.githubusercontent.com/octaspace/octaspace/main/tos_octavpn.md"
