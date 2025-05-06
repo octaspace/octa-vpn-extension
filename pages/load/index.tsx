@@ -111,7 +111,7 @@ export function Load(){
         return
       }
       console.log(err.message)
-      NotifiyError('Unexpected Error',<BsEmojiDizzy />)
+      NotifiyError(`Unexpected Error:${err.message}`,<BsEmojiDizzy />)
     }
   }
 

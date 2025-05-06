@@ -10,6 +10,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useNavigate } from "react-router-dom";
 import { getAPIToken, getOAuthToken } from "~helpers/auth";
 import { BsEmojiDizzy } from "react-icons/bs";
+import { NotifiyError } from "~components/notifiyerror";
 
 function Login() {
   const [IsLoading, setIsLoading] = useState(false)
@@ -38,14 +39,14 @@ function Login() {
     //extract code from redirect url
     const code:string = redirect_url.split('=')[1]
     if (!code) {
-      NotifiyError('Auth Error', <BsEmojiDizzy />)
+      NotifiyError('Auth Error: Token not found', <BsEmojiDizzy />)
       return;
     }
     //send code to /oath/token
     const accessToken:string = await getOAuthToken(code)
     if(accessToken.length<1){
       //show error
-      NotifiyError('Auth Error', <BsEmojiDizzy />)
+      NotifiyError('Auth Error: Invalid token', <BsEmojiDizzy />)
     }
     //use token at /api/v1/profile/me
     const apiToken:string = await getAPIToken(accessToken)
@@ -54,7 +55,7 @@ function Login() {
       save(apiToken)
     }
     //show error
-    NotifiyError('Unexpected Error', <BsEmojiDizzy />)
+    NotifiyError('Unexpected Error: Invalid Token', <BsEmojiDizzy />)
 }
 
   function launchAuth() {
