@@ -119,11 +119,10 @@ function Login() {
         <Title color="#ffffff" style={{zIndex:0}}>OctaVPN</Title>
       </Group>
       <Box maw={320} mx="auto">
-          <Button bg={BtnColor} onClick={launchAuth} styles={{root:{"&:hover":{backgroundColor:BtnColor}}}} loading={IsLoading} fullWidth mt="sm">
+          <Button bg={BtnColor} onClick={launchAuth} styles={{root:{"&:hover":{backgroundColor:BtnColor}}}} loading={IsLoading} mt="sm">
             {Status ? <><FaCircleCheck />
-</> : "Login using Cube"}
+</> : "Sign In"}
           </Button>
-          <Text ta="center" fw="bold">By proceeding you agree to Octa.Space terms</Text>
     </Box>
     </Stack>
     </Box>

@@ -10,7 +10,7 @@ function Settings() {
   const [maxPrice, setMaxPrice] = useState(0.00)
   const navigate = useNavigate();
 
-  const version = "v0.0.1"
+  const version = "v1.0.0"
 
   async function loadValues() {
     setAdvancedView(await storage.getItem("advancedView"))
@@ -53,38 +53,12 @@ function Settings() {
   return (
     <>
     <Stack>
-    <Group position="apart" style={{ borderWidth: 2, borderColor: 'grey', borderStyle: 'solid', borderRadius: 10, padding: 5 }}>
+    <Group position="apart" style={{ borderWidth: 1, borderColor: 'purple', borderStyle: 'solid', borderRadius: 5, padding: 5 }}>
         <Group>
-          <Text c="white">Advanced View</Text>
-          <HoverCard width={240} shadow="md">
-                  <HoverCard.Target>
-                    <div>
-                    <FaCircleInfo color="#8B68FF" />
-                    </div>
-                  </HoverCard.Target>
-                  <HoverCard.Dropdown style={{border:"1px solid grey"}}>
-                    {advancedView ? <Text c="white">Disable this to select nodes randomly</Text> : <Text c="white">Enable this to Manually choose the Node</Text> }
-                  </HoverCard.Dropdown>
-                </HoverCard>
+            <Text c="white">Manual Node Selection</Text>
         </Group>
         <Switch checked={advancedView} onChange={(event)=>{setAdvView(event.currentTarget.checked)}}/>
       </Group>
-      {/* <Group position="apart" style={{ borderWidth: 2, borderColor: 'grey', borderStyle: 'solid', borderRadius: 10, padding: 5 }}>
-        <Group>
-          <Text>Max. Price</Text>
-          <HoverCard width="auto" shadow="md">
-                  <HoverCard.Target>
-                    <div>
-                    <FaCircleInfo color="#8B68FF" />
-                    </div>
-                  </HoverCard.Target>
-                  <HoverCard.Dropdown style={{border:"1px solid grey"}}>
-                    <Text c="white">Set's upper limit for price to filter the Nodes</Text>
-                  </HoverCard.Dropdown>
-                </HoverCard>
-        </Group>
-        <NumberInput step={0.01} min={0.01} defaultValue={maxPrice} onChange={setMaximumPrice} variant="filled" />
-      </Group> */}
       <Group position="center" style={{ padding: 5 }}>
         <Button variant="gradient" gradient={{ from: 'orange', to: 'red' }} onClick={signout}>Sign Out</Button>
       </Group>

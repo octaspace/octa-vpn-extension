@@ -79,7 +79,8 @@ export function Load(){
       let countryDataChunks = await storage.getItem("countryInfoChunks")
       let avgPrice:number = await storage.getItem("avgPrice")
       //fetch new data not before 2 hours
-      if((Date.now()-timestamp)>7200000||nodeDataChunks==undefined||countryDataChunks==undefined||avgPrice==0.00){
+      //if((Date.now()-timestamp)>7200000||nodeDataChunks==undefined||countryDataChunks==undefined||avgPrice==0.00){
+      if((Date.now()-timestamp)>1||nodeDataChunks==undefined||countryDataChunks==undefined||avgPrice==0.00){
         LocalInfo()
         let data:vpnNodes[] = await new Octa(await secureStorage.getItem("token")).getVPNNodes()
         const avgTrafficPrice:number = parseFloat((data.reduce((sum, node) => sum + (node.traffic_price_ether), 0) / data.length).toFixed(2));
@@ -92,8 +93,8 @@ export function Load(){
         }));
         let nodeData: NodeDataType[] = data.map(node => ({
           node_id: node.node_id,
-          download: (node.net_down_mbits/1000000).toFixed(2),
-          upload: (node.net_up_mbits/1000000).toFixed(2),
+          download: Number(node.net_down_mbits / 125_000).toFixed(0),
+          upload: Number(node.net_up_mbits / 125_000).toFixed(0),
         }));
         await saveCountryData(countryData)
         await saveNodeData(nodeData)

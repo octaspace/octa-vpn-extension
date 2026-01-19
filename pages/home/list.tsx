@@ -5,6 +5,7 @@ import { FaArrowLeft, FaCircleInfo } from "react-icons/fa6";
 import { storage } from "~helpers/storage";
 import type { NodeDataType, countryInfoType } from "~pages/load";
 import { FcGlobe } from "react-icons/fc";
+import { ArrowDown, ArrowUp } from "@phosphor-icons/react";
 
 interface ListParam {
     close(country: string, data: countryInfoType, nodeData:NodeDataType[], auto:boolean, nodeid:number, node_price:number): void;
@@ -94,19 +95,9 @@ interface ListParam {
           </>
         ) : (
           <>
-          <Group position="apart" style={{ borderWidth: 2, borderColor: 'grey', borderStyle: 'solid', borderRadius: 10, padding: 5 }}>
+          <Group position="apart" style={{ borderWidth: 1, borderColor: 'purple', borderStyle: 'solid', borderRadius: 5, padding: 5 }}>
             <Group>
-              <Text c="white">Advanced View</Text>
-              <HoverCard width={240} shadow="md">
-                      <HoverCard.Target>
-                        <div>
-                        <FaCircleInfo color="#8B68FF" />
-                        </div>
-                      </HoverCard.Target>
-                      <HoverCard.Dropdown style={{border:"1px solid grey"}}>
-                        {advancedView ? <Text c="white">Disable this to select nodes randomly</Text> : <Text c="white">Enable this to Manually choose the Node</Text> }
-                      </HoverCard.Dropdown>
-                    </HoverCard>
+                <Text c="white">Manual Node Selection</Text>
             </Group>
             <Switch checked={advancedView} onChange={(event)=>{setAdvView(event.currentTarget.checked);setSelectedCountry(null)}}/>
           </Group>
@@ -115,19 +106,16 @@ interface ListParam {
             <Stack w={280}>
             <Group mb={10} position="apart">
             <Box w={50}></Box>
-            <Text style={{textAlign:"center"}} c="white">Country</Text>
-            <Text c="white">Ø/GB</Text>
             </Group>
             <UnstyledButton
                     onClick={() => {
                       close("countryName", countryInfo ,nodeData, true, null, null)
                     }}
-                    style={{ borderWidth: 2, borderColor: 'grey', borderStyle: 'solid', borderRadius: 10, padding: 5 }}
                   >
                     <Group position="apart">
                       <FcGlobe size="2rem" />
-                      <Text color="white" style={{textAlign:"center"}}>Random</Text>
-                      <Text color="white">Lowest</Text>
+                      <Text color="white">Random</Text>
+                      <Text color="white" style={{ marginLeft: 'auto' }}>Lowest</Text>
                     </Group>
                   </UnstyledButton>
               {sortedEntries.map(([countryName, countryData]) => {
@@ -139,12 +127,11 @@ interface ListParam {
                       advancedView ? handleCountryClick(countryName) :
                       close(countryName, countryInfo ,nodeData, false, null, null)
                     }}
-                    style={{ borderWidth: 2, borderColor: 'grey', borderStyle: 'solid', borderRadius: 10, padding: 5 }}
                   >
-                    <Group position="apart">
+                    <Group>
                       <CountryIconComponent title={countryName} height={25} style={{ borderRadius: 5 }} />
-                      {countryName.length>20 ? <><Text color="white" style={{textAlign:"center",fontSize:"14px"}}>{countryName}</Text></> : <><Text color="white" style={{textAlign:"center"}}>{countryName}</Text></>}
-                      <Text color="white">{(countryData[0].traffic_price_ether).toString()}</Text>
+                      {countryName.length>20 ? <><Text color="white" style={{textAlign:"left",fontSize:"14px"}}>{countryName}</Text></> : <><Text color="white" style={{textAlign:"left"}}>{countryName}</Text></>}
+                      <Text style={{ marginLeft: 'auto' }} color="white">{(countryData[0].traffic_price_ether).toString()}</Text>
                     </Group>
                   </UnstyledButton>
                 );
@@ -162,7 +149,6 @@ interface ListParam {
       </>
     );
   }
-  
 
  function NodeList({ close, countryName, nodeData, countryInfo }: NodeListParam) {
 
@@ -190,20 +176,22 @@ interface ListParam {
           <>
             
           <Stack w={280}>
-          <Group mb={10} position="apart">
-            <Text c="white">Node</Text>
-            <Text c="white">Down/Up</Text>
-            </Group>
+          <Group position="apart">
+          </Group>
                       {countryInfo[countryName].map((node) => (
                         <UnstyledButton
                           key={node.node_id}
                           onClick={() => handleNodeClick(node.node_id)}
-                          ml={10}
-                          style={{borderWidth: 2,width:260,borderColor: 'grey',borderStyle: 'solid',borderRadius: 10,padding: 5,marginTop: 5,}}
+                          style={{ borderWidth: 1, borderColor: 'grey', borderStyle: 'solid', borderRadius: 5, padding: 5, marginTop: 5 }}
                         >
                           <Group position="apart">
                             <Text color="white">{`${node.node_id}`}</Text>
-                            <Text color="white">{` ${returnNodeData(node.node_id).download}, ${returnNodeData(node.node_id).upload}`}</Text>
+                                <Text color="white">
+                                    <ArrowDown color="white" style={{ verticalAlign: "middle" }} />
+                                    {` ${returnNodeData(node.node_id).download} `}
+                                    <ArrowUp color="white" style={{ verticalAlign: "middle" }} />
+                                   {` ${returnNodeData(node.node_id).upload}`} Mbit
+                                </Text>
                           </Group>
                         </UnstyledButton>
                       ))}
