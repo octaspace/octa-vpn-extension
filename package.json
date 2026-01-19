@@ -1,8 +1,8 @@
 {
   "name": "octa-vpn",
   "displayName": "OCTA VPN",
-  "version": "0.0.1",
-  "description": "OCTA VPN for browsers",
+  "version": "1.0.0",
+  "description": "OCTA VPN Browser Extension",
   "author": "",
   "scripts": {
     "dev": "plasmo dev --verbose",
@@ -20,7 +20,7 @@
     "@plasmohq/storage": "1.8.0",
     "country-flag-icons": "^1.5.9",
     "node-fetch": "2.6.7",
-    "plasmo": "0.90.3",
+    "plasmo": "0.90.5",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-icons": "^4.12.0",

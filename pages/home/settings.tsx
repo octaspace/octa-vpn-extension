@@ -48,7 +48,7 @@ function Settings() {
     if(proxyStatus=="Connected"||proxyStatus=="Connecting"){
       disconnect()
     }
-    navigate('/')
+    navigate('/login')
   }
   return (
     <>

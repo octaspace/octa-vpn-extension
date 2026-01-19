@@ -44,14 +44,14 @@ function Login() {
     }
     //send code to /oath/token
     const accessToken:string = await getOAuthToken(code)
-    if(accessToken.length<1){
+    if(accessToken.length < 1){
       //show error
       NotifiyError('Auth Error: Invalid token', <BsEmojiDizzy />)
     }
     //use token at /api/v1/profile/me
     const apiToken:string = await getAPIToken(accessToken)
     //save it, proceed
-    if(apiToken.length==64){
+    if(apiToken.length === 64){
       save(apiToken)
     }
     //show error
