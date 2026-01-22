@@ -11,6 +11,7 @@ import { useNavigate } from "react-router-dom";
 import { getAPIToken, getOAuthToken } from "~helpers/auth";
 import { BsEmojiDizzy } from "react-icons/bs";
 import { NotifiyError } from "~components/notifiyerror";
+import { generateCodeVerifier, generateCodeChallenge, storePkceVerifier, consumePkceVerifier } from "~helpers/pkce";
 
 function Login() {
   const [IsLoading, setIsLoading] = useState(false)
@@ -36,66 +37,101 @@ function Login() {
   }
 
   async function authorize(redirect_url:string){
-    //extract code from redirect url
-    const code:string = redirect_url.split('=')[1]
-    if (!code) {
-      NotifiyError('Auth Error: Token not found', <BsEmojiDizzy />)
-      return;
+    try {
+      // Extract code from redirect URL using URLSearchParams
+      const url = new URL(redirect_url);
+      const code = url.searchParams.get('code');
+      
+      if (!code) {
+        setIsLoading(false);
+        NotifiyError('Auth Error: Authorization code not found', <BsEmojiDizzy />);
+        return;
+      }
+      
+      // Retrieve and consume the PKCE verifier
+      const codeVerifier = await consumePkceVerifier();
+      if (!codeVerifier) {
+        setIsLoading(false);
+        NotifiyError('Auth Error: PKCE verifier not found', <BsEmojiDizzy />);
+        return;
+      }
+      
+      // Send code and verifier to /oauth/token
+      const accessToken: string = await getOAuthToken(code, codeVerifier);
+      if (accessToken.length < 1) {
+        setIsLoading(false);
+        NotifiyError('Auth Error: Invalid token', <BsEmojiDizzy />);
+        return;
+      }
+      
+      // Use token at /api/v1/profiles/me
+      const apiToken: string = await getAPIToken(accessToken);
+      
+      // Save it and proceed
+      if (apiToken.length === 64) {
+        await save(apiToken);
+        return;
+      }
+      
+      // Show error if token is invalid
+      setIsLoading(false);
+      NotifiyError('Unexpected Error: Invalid Token', <BsEmojiDizzy />);
+    } catch (error) {
+      setIsLoading(false);
+      NotifiyError('Auth Error: Failed to complete authorization', <BsEmojiDizzy />);
     }
-    //send code to /oath/token
-    const accessToken:string = await getOAuthToken(code)
-    if(accessToken.length < 1){
-      //show error
-      NotifiyError('Auth Error: Invalid token', <BsEmojiDizzy />)
-    }
-    //use token at /api/v1/profile/me
-    const apiToken:string = await getAPIToken(accessToken)
-    //save it, proceed
-    if(apiToken.length === 64){
-      save(apiToken)
-    }
-    //show error
-    NotifiyError('Unexpected Error: Invalid Token', <BsEmojiDizzy />)
-}
-
-  function launchAuth() {
-    setIsLoading(true)
-
-    if(process.env.PLASMO_BROWSER=="chrome"){
-
-      const redirectURL = chrome.identity.getRedirectURL();
-
-      const clientID =
-        "AVKl5zoeH1R_OXqWlE2rbAn2JWBXSFflq0lcUnmy3y0";
-      let authURL = "https://cube.octa.computer/oauth/authorize";
-      authURL += `?client_id=${clientID}`;
-      authURL += `&response_type=code`;
-      authURL += `&redirect_uri=${encodeURIComponent(redirectURL)}`;
-      authURL += `&scope=`;
-
-      return chrome.identity.launchWebAuthFlow({
-        interactive: true,
-        url: authURL,
-      }, authorize);
   }
-  if(process.env.PLASMO_BROWSER=="firefox"){
-    
-    const redirectURL = browser.identity.getRedirectURL();
 
-    const clientID =
-      "Bv0maVhVPpjbUehutq_frwhKpMYDI9W70P6C1nOGScQ";
-    let authURL = "https://cube.octa.computer/oauth/authorize";
-    authURL += `?client_id=${clientID}`;
-    authURL += `&response_type=code`;
-    authURL += `&redirect_uri=${encodeURIComponent(redirectURL)}`;
-    authURL += `&scope=`;
+  async function launchAuth() {
+    try {
+      setIsLoading(true);
 
-    return browser.identity.launchWebAuthFlow({
-      interactive: true,
-      url: authURL,
-    }, authorize);
-}
+      // Generate PKCE verifier and challenge
+      const codeVerifier = generateCodeVerifier();
+      const codeChallenge = await generateCodeChallenge(codeVerifier);
+      
+      // Store the verifier for later use
+      await storePkceVerifier(codeVerifier);
 
+      if (process.env.PLASMO_BROWSER == "chrome") {
+        const redirectURL = chrome.identity.getRedirectURL();
+        const clientID = "AVKl5zoeH1R_OXqWlE2rbAn2JWBXSFflq0lcUnmy3y0";
+        
+        let authURL = "https://cube.octa.computer/oauth/authorize";
+        authURL += `?client_id=${clientID}`;
+        authURL += `&response_type=code`;
+        authURL += `&redirect_uri=${encodeURIComponent(redirectURL)}`;
+        authURL += `&code_challenge=${codeChallenge}`;
+        authURL += `&code_challenge_method=S256`;
+        authURL += `&scope=`;
+
+        return chrome.identity.launchWebAuthFlow({
+          interactive: true,
+          url: authURL,
+        }, authorize);
+      }
+      
+      if (process.env.PLASMO_BROWSER == "firefox") {
+        const redirectURL = browser.identity.getRedirectURL();
+        const clientID = "Bv0maVhVPpjbUehutq_frwhKpMYDI9W70P6C1nOGScQ";
+        
+        let authURL = "https://cube.octa.computer/oauth/authorize";
+        authURL += `?client_id=${clientID}`;
+        authURL += `&response_type=code`;
+        authURL += `&redirect_uri=${encodeURIComponent(redirectURL)}`;
+        authURL += `&code_challenge=${codeChallenge}`;
+        authURL += `&code_challenge_method=S256`;
+        authURL += `&scope=`;
+
+        return browser.identity.launchWebAuthFlow({
+          interactive: true,
+          url: authURL,
+        }, authorize);
+      }
+    } catch (error) {
+      setIsLoading(false);
+      NotifiyError('Auth Error: Failed to launch authentication', <BsEmojiDizzy />);
+    }
   }
 
   return (
