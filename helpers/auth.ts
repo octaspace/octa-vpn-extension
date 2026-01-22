@@ -32,7 +32,7 @@ export async function getOAuthToken(code: string, codeVerifier: string): Promise
                 code_verifier: codeVerifier
             });
 
-            const response = await fetch('https://cube.octa.space/oauth/token', {
+            const response = await fetch('https://cube.octa.computer/oauth/token', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded'
@@ -65,7 +65,7 @@ export async function getAPIToken(access_token:string):Promise<string>{
 
     while (attempts < maxAttempts) {
         try {
-        const response = await fetch("https://cube.octa.space/api/v1/profiles/me", {method: 'GET', headers: {"Authorization":`Bearer ${access_token}`}});
+        const response = await fetch("https://cube.octa.computer/api/v1/profiles/me", {method: 'GET', headers: {"Authorization":`Bearer ${access_token}`}});
         const data:any = await response.json();
 
         if (!data.token) {

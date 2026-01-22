@@ -97,7 +97,7 @@ function Login() {
         const redirectURL = chrome.identity.getRedirectURL();
         const clientID = "AVKl5zoeH1R_OXqWlE2rbAn2JWBXSFflq0lcUnmy3y0";
         
-        let authURL = "https://cube.octa.space/oauth/authorize";
+        let authURL = "https://cube.octa.computer/oauth/authorize";
         authURL += `?client_id=${clientID}`;
         authURL += `&response_type=code`;
         authURL += `&redirect_uri=${encodeURIComponent(redirectURL)}`;
@@ -115,7 +115,7 @@ function Login() {
         const redirectURL = browser.identity.getRedirectURL();
         const clientID = "Bv0maVhVPpjbUehutq_frwhKpMYDI9W70P6C1nOGScQ";
         
-        let authURL = "https://cube.octa.space/oauth/authorize";
+        let authURL = "https://cube.octa.computer/oauth/authorize";
         authURL += `?client_id=${clientID}`;
         authURL += `&response_type=code`;
         authURL += `&redirect_uri=${encodeURIComponent(redirectURL)}`;
