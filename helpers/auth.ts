@@ -16,10 +16,11 @@ export async function getOAuthToken(code: string, codeVerifier: string): Promise
             if (process.env.PLASMO_BROWSER == "chrome") {
                 client_id = "AVKl5zoeH1R_OXqWlE2rbAn2JWBXSFflq0lcUnmy3y0";
                 redirect_uri = chrome.identity.getRedirectURL();
-            }
-            if (process.env.PLASMO_BROWSER == "firefox") {
+            } else if (process.env.PLASMO_BROWSER == "firefox") {
                 client_id = "Bv0maVhVPpjbUehutq_frwhKpMYDI9W70P6C1nOGScQ";
                 redirect_uri = browser.identity.getRedirectURL();
+            } else {
+                throw new Error('Unsupported browser');
             }
 
             // Prepare form data for application/x-www-form-urlencoded
