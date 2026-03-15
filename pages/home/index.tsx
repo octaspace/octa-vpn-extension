@@ -118,15 +118,22 @@ function Home() {
 
   const getData = async () => {
     const selectedNodeData = await storage.getItem<NodeStorageData>("selectedNodeData")
-    setcountryName(selectedNodeData.country_name)
-    setcountry(selectedNodeData.country_iso)
-    setnodeId(selectedNodeData.node_id)
-    setnodePrice(selectedNodeData.traffic_price_ether)
-    setNodeDownload(selectedNodeData.download_speed)
-    setNodeUpload(selectedNodeData.upload_speed)
+    if(selectedNodeData){
+      setcountryName(selectedNodeData.country_name)
+      setcountry(selectedNodeData.country_iso)
+      setnodeId(selectedNodeData.node_id)
+      setnodePrice(selectedNodeData.traffic_price_ether)
+      setNodeDownload(selectedNodeData.download_speed)
+      setNodeUpload(selectedNodeData.upload_speed)
+    }
 
     setBalanceValue(await storage.getItem("balance"))
-    setProxyStatus(await storage.getItem("proxyStatus"))
+    const currentProxyStatus = await storage.getItem<string>("proxyStatus")
+    if(currentProxyStatus==undefined){
+      await storage.setItem("proxyStatus", await proxy.getState())
+    } else {
+      setProxyStatus(currentProxyStatus)
+    }
     setcountryConnected(await storage.getItem("countryConnected"))
     setcountryLocal(await storage.getItem("countryLocal"))
     setcityConnected(await storage.getItem("cityConnected"))
@@ -134,9 +141,6 @@ function Home() {
     setipConnected(await storage.getItem("ipConnected"))
     setipLocal(await storage.getItem("ipLocal"))
     setAdvancedView(await storage.getItem("advancedView"))
-    if(proxyStatus==undefined){
-      await storage.setItem("proxyStatus",await proxy.getState())
-    }
   }
 
   const balance = ()=>{
@@ -162,15 +166,7 @@ function Home() {
       setnodePrice(selectedNodeData.traffic_price_ether)
       setNodeDownload(selectedNodeData.download_speed)
       setNodeUpload(selectedNodeData.upload_speed)
-      
     }})
-
-    storage.watch({"node_id":(key)=>{setnodeId(key.newValue)}})
-    storage.watch({"node_price":(key)=>{setnodePrice(key.newValue)}})
-    storage.watch({"country":(key)=>{setcountry(key.newValue)}})
-    storage.watch({"country_name":(key)=>{setcountryName(key.newValue)}})
-    storage.watch({"node_download_speed":(key)=>{setNodeDownload(key.newValue)}})
-    storage.watch({"node_upload_speed":(key)=>{setNodeUpload(key.newValue)}})
   }
 
   const listenLocalInfo = ()=>{
@@ -179,7 +175,7 @@ function Home() {
     storage.watch({"ipLocal":(key)=>{setipLocal(key.newValue)}})
   }
 
-  async function listenSettings() {
+  const listenSettings = ()=>{
     storage.watch({"advancedView":(key)=>{setAdvancedView(key.newValue)}})
   }
 

@@ -5,25 +5,6 @@ export class ProxyService{
     constructor() {
     }
 
-    setState(){
-        chrome.proxy.settings.get(
-            { 'incognito': false },
-            function (config) {
-                if(config.levelOfControl=="controlled_by_this_extension"||config.levelOfControl=="controllable_by_this_extension"){
-                    if(config.value.mode == "fixed_servers"){
-                        this.state = "Connected"
-                    }
-                    else{
-                        this.state = "Disconnected"
-                    }
-                }
-                else{
-                    this.state = "NoPermission"
-                }
-            }
-        );
-    }
-
     getState() {
         return new Promise((resolve, reject) => {
             if (this.state !== undefined) {
@@ -67,21 +48,19 @@ export class ProxyService{
     
     updateState(){
         if(process.env.PLASMO_BROWSER=="chrome"){
-            chrome.proxy.settings.onChange.addListener(
-                function(config) {
-                    if(config.levelOfControl=="controlled_by_this_extension"||config.levelOfControl=="controllable_by_this_extension"){
-                        if(config.value.mode == "fixed_servers"){
-                            this.state = "Connected"
-                        }
-                        else{
-                            this.state = "Disconnected"
-                        }
+            chrome.proxy.settings.onChange.addListener((config) => {
+                if(config.levelOfControl=="controlled_by_this_extension"||config.levelOfControl=="controllable_by_this_extension"){
+                    if(config.value.mode == "fixed_servers"){
+                        this.state = "Connected"
                     }
                     else{
-                        this.state = "NoPermission"
+                        this.state = "Disconnected"
                     }
                 }
-              )
+                else{
+                    this.state = "NoPermission"
+                }
+            })
         }
         if(process.env.PLASMO_BROWSER=="firefox"){
 

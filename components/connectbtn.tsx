@@ -14,30 +14,31 @@ export function HomeButton({node_id}:HomeButtonProps){
     const [BackCir2Color, setBackCir2Color] = useState("rgba(0, 0, 0, 0.3)")
     const [IconColor, setIconColor] = useState("white")
 
-    storage.watch({"proxyStatus":(key)=>{
-        setStatus(key.newValue)
-    }})
     useEffect(()=>{
+        storage.watch({"proxyStatus":(key)=>{ setStatus(key.newValue) }})
         async function getStatus(){
-            let status:string = await storage.getItem("proxyStatus")
+            const status:string = await storage.getItem("proxyStatus")
             setStatus(status)
-            if(status=="Connecting"){
-                setBackCir1Color("rgba(255, 209, 128, 0.5)")
-                setBackCir2Color("rgba(255, 209, 128, 1)")
-                setIconColor("red")
-            }
-            if(status=="Connected"){
-                setBackCir1Color("rgba(200, 230, 201, 0.5)")
-                setBackCir2Color("rgba(200, 230, 201, 1)")
-                setIconColor("red")
-            }
-            if(status=="Disconnected"||status=="NoPermission"){
-                setBackCir1Color("rgba(0, 0, 0, 0.1)")
-                setBackCir2Color("rgba(0, 0, 0, 0.3)")
-                setIconColor("white")
-            }
         }
         getStatus()
+    },[])
+
+    useEffect(()=>{
+        if(Status=="Connecting"){
+            setBackCir1Color("rgba(255, 209, 128, 0.5)")
+            setBackCir2Color("rgba(255, 209, 128, 1)")
+            setIconColor("red")
+        }
+        if(Status=="Connected"){
+            setBackCir1Color("rgba(200, 230, 201, 0.5)")
+            setBackCir2Color("rgba(200, 230, 201, 1)")
+            setIconColor("red")
+        }
+        if(Status=="Disconnected"||Status=="NoPermission"){
+            setBackCir1Color("rgba(0, 0, 0, 0.1)")
+            setBackCir2Color("rgba(0, 0, 0, 0.3)")
+            setIconColor("white")
+        }
     },[Status])
 
     return(
