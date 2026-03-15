@@ -78,9 +78,8 @@ export function Load(){
       let nodeDataChunks = await storage.getItem("nodeInfoChunks")
       let countryDataChunks = await storage.getItem("countryInfoChunks")
       let avgPrice:number = await storage.getItem("avgPrice")
-      //fetch new data not before 2 hours
-      //if((Date.now()-timestamp)>7200000||nodeDataChunks==undefined||countryDataChunks==undefined||avgPrice==0.00){
-      if((Date.now()-timestamp)>1||nodeDataChunks==undefined||countryDataChunks==undefined||avgPrice==0.00){
+      //fetch new data not before 1 hour
+      if((Date.now()-timestamp)>3_600_000||nodeDataChunks==undefined||countryDataChunks==undefined||avgPrice==0.00){
         LocalInfo()
         let data:vpnNodes[] = await new Octa(await secureStorage.getItem("token")).getVPNNodes()
         const avgTrafficPrice:number = parseFloat((data.reduce((sum, node) => sum + (node.traffic_price_ether), 0) / data.length).toFixed(2));

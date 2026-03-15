@@ -48,13 +48,8 @@ function Home() {
           eligibleNodes = data[randomCountry]?.filter(node => node.traffic_price_ether <= avgPrice && node.traffic_price_ether <= parseFloat(balanceValue));
         }
         const randomIndex = Math.floor(Math.random() * eligibleNodes.length);
-        let singleNodeData:NodeDataType
-        for (const node of nodeData) {
-          if (node.node_id === eligibleNodes[randomIndex].node_id) {
-            singleNodeData = node;
-            break;
-          }
-        }
+        const singleNodeData = nodeData.find(node => node.node_id === eligibleNodes[randomIndex].node_id)
+        if (!singleNodeData) return
         const selectedNodeData : NodeStorageData = {
           country_iso:data[randomCountry][0].country_iso,
           country_name:randomCountry,
@@ -81,14 +76,9 @@ function Home() {
         if (lastSelectedNodeIndex === undefined || lastSelectedNodeIndex >= oldvalue.length || countryName!=country) {
           lastSelectedNodeIndex = 0;
         }
-        const nextNodeIndex = (lastSelectedNodeIndex + 1) % oldvalue.length;    
-        let singleNodeData:NodeDataType
-        for (const node of nodeData) {
-          if (node.node_id === oldvalue[nextNodeIndex].node_id) {
-            singleNodeData = node;
-            break;
-          }
-        }
+        const nextNodeIndex = (lastSelectedNodeIndex + 1) % oldvalue.length;
+        const singleNodeData = nodeData.find(node => node.node_id === oldvalue[nextNodeIndex].node_id)
+        if (!singleNodeData) return
         const selectedNodeData : NodeStorageData = {
           country_iso:oldvalue[nextNodeIndex].country_iso,
           country_name:country,
@@ -102,13 +92,8 @@ function Home() {
         reconnect(oldvalue[nextNodeIndex].node_id)
       }
       else{
-        let singleNodeData:NodeDataType
-        for (const node of nodeData) {
-          if (node.node_id === nodeid) {
-            singleNodeData = node;
-            break;
-          }
-        }
+        const singleNodeData = nodeData.find(node => node.node_id === nodeid)
+        if (!singleNodeData) return
         const selectedNodeData : NodeStorageData = {
           country_iso:data[country][0].country_iso,
           country_name:country,
