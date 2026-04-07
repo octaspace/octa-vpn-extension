@@ -1,23 +1,35 @@
 import { useState } from "react"
 import { clearData, setToken } from "~helpers/storage";
 import logo from "data-base64:~assets/img/octa.png";
-import { Box, Button, Group, Overlay, Stack, Text, Title } from '@mantine/core';
+import { Box, Button, Stack, Text, Title, useMantineTheme } from '@mantine/core';
 import { Image } from '@mantine/core';
+import { keyframes } from '@emotion/react';
 import { Octa } from "@octaspace/api.js";
 import { wait } from "~helpers/wait";
 import { FaCircleCheck } from "react-icons/fa6";
-import { useDisclosure } from "@mantine/hooks";
 import { useNavigate } from "react-router-dom";
 import { getAPIToken, getOAuthToken } from "~helpers/auth";
 import { BsEmojiDizzy } from "react-icons/bs";
 import { NotifiyError } from "~components/notifiyerror";
 import { generateCodeVerifier, generateCodeChallenge, storePkceVerifier, consumePkceVerifier } from "~helpers/pkce";
+import { Notifications } from "@mantine/notifications";
+
+const logoGlow = keyframes({
+  '0%, 100%': { filter: `drop-shadow(0 0 8px rgba(211, 44, 180, 0.35))` },
+  '50%':       { filter: `drop-shadow(0 0 22px rgba(211, 44, 180, 0.7))` },
+});
+
+const glowPulse = keyframes({
+  '0%, 100%': { textShadow: '0 0 6px rgba(211, 44, 180, 0.25)' },
+  '50%':      { textShadow: '0 0 18px rgba(211, 44, 180, 0.55), 0 0 32px rgba(211, 44, 180, 0.2)' },
+});
 
 function Login() {
   const [IsLoading, setIsLoading] = useState(false)
   const [Status, setStatus] = useState(false)
-  const [BtnColor, setBtnColor] = useState("")
   const navigate = useNavigate();
+  const theme = useMantineTheme();
+  const isDark = theme.colorScheme === 'dark';
 
   async function save(apikey:string) {
     try{
@@ -25,7 +37,6 @@ function Login() {
       let octa = new Octa(apikey)
       await octa.getAccountInfo()
       setIsLoading(false)
-      setBtnColor("green")
       setStatus(true)
       await wait(1000)
       await setToken(apikey);
@@ -136,33 +147,68 @@ function Login() {
 
   return (
     <>
-    <Box w={350} h={500} p={10}
-      style={{
-        backgroundImage: "linear-gradient(150deg,#CC1B99, #040308, #471288)",
-      }}>
-    <Overlay color="#000" opacity={0.2} zIndex={0}/>
-    <Group h={100}></Group>
-    <Stack justify="center">
-      <Group position="center">
-        <Image
-              width={70}
-              alt="OctaVPN"
-              src={logo}
-              style={{filter:'drop-shadow(0 0 4mm rgb(160, 0, 210))'}}
-            />
-        </Group>
-      <Group position="center">
-        <Title color="#ffffff" style={{zIndex:0}}>OctaVPN</Title>
-      </Group>
-      <Box maw={320} mx="auto">
-          <Button bg={BtnColor} onClick={launchAuth} styles={{root:{"&:hover":{backgroundColor:BtnColor}}}} loading={IsLoading} mt="sm">
-            {Status ? <><FaCircleCheck />
-</> : "Sign In"}
+      <Box
+        w={350}
+        h={520}
+        bg={isDark ? theme.colors.dark[7] : theme.colors.gray[0]}
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
+      >
+        <Stack align="center" spacing="xl">
+          <Image
+            width={80}
+            alt="OctaVPN"
+            src={logo}
+            sx={{ animation: `${logoGlow} 3.5s ease-in-out infinite` }}
+          />
+
+          <Title
+            order={2}
+            color="cube.5"
+            sx={{
+              letterSpacing: 1,
+              animation: `${glowPulse} 3.5s ease-in-out infinite`,
+            }}
+          >
+            OctaVPN
+          </Title>
+
+          <Text size="sm" color={isDark ? "gray.5" : "dark.3"} align="center" maw={240}>
+            Sign in with your OctaSpace account to continue
+          </Text>
+
+          <Button
+            size="md"
+            radius="md"
+            color="cube"
+            variant={Status ? "light" : "filled"}
+            loading={IsLoading}
+            onClick={launchAuth}
+            leftIcon={Status ? <FaCircleCheck /> : undefined}
+            sx={{
+              minWidth: 180,
+              fontWeight: 600,
+              letterSpacing: 0.5,
+              transition: 'transform 150ms ease, box-shadow 150ms ease, background-color 200ms ease',
+              ...(Status && {
+                backgroundColor: theme.fn.rgba(theme.colors.cube[5], 0.15),
+                color: theme.colors.cube[5],
+              }),
+              '&:hover': Status
+                ? {}
+                : {
+                    transform: 'translateY(-2px)',
+                    boxShadow: `0 8px 24px ${theme.fn.rgba(theme.colors.cube[5], 0.35)}`
+                  },
+              '&:active': { transform: 'translateY(0)' }
+            }}
+          >
+            {Status ? "Done" : "Sign In"}
           </Button>
-    </Box>
-    </Stack>
-    </Box>
-          </>
+        </Stack>
+
+        <Notifications style={{ width: 'auto' }} position="bottom-right" zIndex={6} />
+      </Box>
+    </>
   )
 }
 
