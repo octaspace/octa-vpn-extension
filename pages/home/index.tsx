@@ -1,16 +1,20 @@
 import { useEffect, useState } from "react"
-import { ActionIcon, BackgroundImage, Box, Button, Group, HoverCard, Modal, ScrollArea, Stack, Text, Title } from '@mantine/core';
+import { ActionIcon, Box, Group, HoverCard, Modal, ScrollArea, Stack, Text, Title, UnstyledButton, useMantineTheme, Paper } from '@mantine/core';
+import { keyframes } from '@emotion/react';
+
+const glowPulse = keyframes({
+  '0%, 100%': { textShadow: '0 0 6px rgba(211, 44, 180, 0.25)' },
+  '50%': { textShadow: '0 0 18px rgba(211, 44, 180, 0.55), 0 0 32px rgba(211, 44, 180, 0.2)' },
+});
 import Settings from "./settings";
 import { useDisclosure } from "@mantine/hooks";
-import { RiSettings5Line, RiEdit2Line, RiArrowDownFill, RiArrowUpFill } from "react-icons/ri";
-import stars from "data-base64:~assets/img/stars.png";
+import { RiSettings5Line, RiArrowDownFill, RiArrowUpFill } from "react-icons/ri";
 import { HomeButton } from "~components/connectbtn";
 import { List } from "./list";
-import { Status } from "~components/status";
+
 import { type NodeStorageData, storage } from "~helpers/storage";
 import { Load, type NodeDataType, type countryInfoType } from "~pages/load";
 import { Notifications } from "@mantine/notifications";
-import { DetailCircle } from "~components/detailCircle";
 import { FaServer } from "react-icons/fa6";
 import { FlagIcon } from "./flagicon";
 import { proxy } from "~background";
@@ -189,70 +193,162 @@ function Home() {
     listenNodeInfo()
   },[])
 
+  const theme = useMantineTheme();
+  const isDark = theme.colorScheme === 'dark';
+  const isConnected = proxyStatus === "Connected" || proxyStatus === "Connecting";
+
   return (
     <>
-        <Box w={350} h={500} p={10}
-      style={{
-        backgroundImage: "linear-gradient(158deg,rgb(204,27,153) 0%, rgb(4,3,8) 50%, rgb(71,18,136) 100%)",
-      }}>
-        <BackgroundImage w={330} h={480}  src={stars}>
-        <Modal opened={openedSettings} onClose={closeSettings} scrollAreaComponent={ScrollArea.Autosize} styles={{ title: { color: 'white' } }} overlayProps={{blur: 2,}} title="Settings">
+      <Box w={350} h={520} p="md" bg={isDark ? theme.colors.dark[7] : theme.colors.gray[0]} style={{ display: 'flex', flexDirection: 'column' }}>
+        <Modal opened={openedSettings} onClose={closeSettings} scrollAreaComponent={ScrollArea.Autosize} title="Settings" centered
+          styles={{
+            title: { color: isDark ? theme.white : theme.black },
+            inner: { backgroundColor: isDark ? theme.colors.dark[6] : theme.white }
+          }}>
           <Settings />
         </Modal>
-        <Modal centered size="auto" opened={openedList} onClose={closeList} scrollAreaComponent={ScrollArea.Autosize} styles={{ title: { color: 'white' } }} overlayProps={{blur: 2,}} style={{color:"white"}} title="Select Country">
+        
+        <Modal size={320} opened={openedList} onClose={closeList} scrollAreaComponent={ScrollArea.Autosize} title="Select Country" centered 
+          styles={{ 
+            title: { color: isDark ? theme.white : theme.black },
+            inner: { backgroundColor: isDark ? theme.colors.dark[6] : theme.white },
+            body: { paddingRight: 14, paddingLeft: 14, paddingBottom: 14 },
+            close: { color: isDark ? theme.colors.gray[5] : theme.colors.gray[6] }
+          }}>
           <List close={CloseModel} />
         </Modal>
-        <Stack spacing="xs">
-        <Group position="apart">
-          <ActionIcon radius="md" size="lg" variant="filled" color="blue" style={{border:"1px solid purple"}} onClick={openSettings}><RiSettings5Line style={{color: "white"}}/></ActionIcon>
-          <Title style={{color:"white"}}>OctaVPN</Title>
-          <Text style={{color:"white"}}>{balanceValue} Ø</Text>
+
+        <Group position="apart" mb="xl" align="center" style={{ position: 'relative' }}>
+          <ActionIcon 
+            radius="xl" 
+            size="lg" 
+            variant="transparent" 
+            onClick={openSettings}
+            sx={{ 
+              color: isDark ? theme.colors.gray[5] : theme.colors.gray[6],
+              transition: 'color 200ms ease, transform 200ms ease',
+              '&:hover': { 
+                color: isDark ? theme.colors.gray[3] : theme.colors.dark[9],
+                transform: 'rotate(45deg)'
+              } 
+            }}
+          >
+            <RiSettings5Line size="1.4rem" />
+          </ActionIcon>
+          <Title
+            order={3}
+            color="cube.5"
+            sx={{
+              letterSpacing: 1,
+              position: 'absolute',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              animation: `${glowPulse} 3.5s ease-in-out infinite`,
+            }}
+          >OctaVPN</Title>
+          <Text weight={700} color={isDark ? "gray.3" : "gray.7"}>{balanceValue} Ø</Text>
         </Group>
-        <Group position="center"><Status /></Group>
-        <Group position="center"><HomeButton node_id={nodeId} /></Group>
-        <Group position="center">
-          <Button style={{borderColor:"purple"}} variant="outline" rightIcon={<RiEdit2Line color="white" />} onClick={openList}>
-            <Group position="apart">
-            <FlagIcon country={country} />
-            <Text c="white">{countryName}</Text>
+
+        <Stack spacing="xl" align="center" style={{ flexGrow: 1, justifyContent: "center" }}>
+          
+          <Group position="center" mb={-10}>
+            <Text 
+              size="sm" 
+              weight={700}
+              color={
+                proxyStatus === "Connected" ? "green.6" 
+                : proxyStatus === "Connecting" ? "orange.6" 
+                : isDark ? "gray.5" : "dark.3"
+              }
+              style={{ letterSpacing: 2 }}
+            >
+              {proxyStatus.toUpperCase()}
+            </Text>
           </Group>
-          </Button>
-        </Group>
-        <Group position="center">
-          <Stack spacing="xs">
-            <Text fz="sm" style={{color:"white", fontWeight:"bold", textAlign:"center"}}>IP: {proxyStatus=="Connected" ? ipConnected : ipLocal }</Text>
-            <Text fz="sm" style={{color:"white", fontWeight:"bold", textAlign:"center"}}>{proxyStatus=="Connected" ? countryConnected : countryLocal }</Text>
-            <Text fz="sm" style={{color:"white", fontWeight:"bold", textAlign:"center"}}>{proxyStatus=="Connected" ? cityConnected : cityLocal }</Text>
-          </Stack>
-        </Group>
-        <Group position="center">
-          <Group w={200} position="apart">
-            <HoverCard width="auto" shadow="md" disabled={proxyStatus=="Disconnected"}>
-                <HoverCard.Target>
-                  <div>
-                  <DetailCircle data={(proxyStatus=="Connecting" || proxyStatus=="Connected" ) ? nodeId.toString() : ".."} title="NODE" icon={<FaServer color="cyan" />} ></DetailCircle>
-                  </div>
-                </HoverCard.Target>
-                <HoverCard.Dropdown style={{border:"1px solid grey"}}>
-                  <Group>
-                    <RiArrowDownFill />
-                    <Text>{nodeDownload} Mbps</Text>
-                  </Group>
-                  <Group>
-                    <RiArrowUpFill />
-                    <Text>{nodeUpload} Mbps</Text>
-                  </Group>
-                </HoverCard.Dropdown>
-              </HoverCard>
-              <DetailCircle data={(proxyStatus=="Connecting" || proxyStatus=="Connected" ) ? nodePrice.toFixed(4).toString() : "0"} title="Cost/GB" icon={<Text style={{fontWeight:"bold", color:"cyan"}}>Ø</Text>} />
+
+          <Group position="center">
+            <HomeButton node_id={nodeId} />
           </Group>
-        </Group>
+
+          <Text size="sm" weight={500} color={isDark ? "gray.5" : "dark.3"} align="center" mt={-10} style={{ letterSpacing: 0.5, fontVariantNumeric: 'tabular-nums', minHeight: 20 }}>
+            {isConnected ? ipConnected : ipLocal || '\u00A0'}
+          </Text>
+
         </Stack>
-        <Notifications style={{width:'auto'}} position="bottom-right" zIndex={6}/>
+
+        <Stack spacing="xs" mt="auto">
+          <UnstyledButton
+            onClick={openList}
+            sx={{
+              width: '100%',
+              borderRadius: theme.radius.md,
+              overflow: 'hidden',
+              transition: 'transform 150ms ease',
+              '&:hover .country-card': {
+                backgroundColor: isDark ? theme.colors.dark[5] : theme.colors.gray[1],
+                borderColor: theme.colors.cube[6],
+              },
+              '&:active': { transform: 'scale(0.98)' },
+            }}
+          >
+            <Paper
+              className="country-card"
+              shadow="sm"
+              radius="md"
+              p="xs"
+              withBorder
+              bg={isDark ? theme.colors.dark[6] : "white"}
+              style={{ transition: 'background-color 150ms ease, border-color 150ms ease' }}
+            >
+              <Group position="apart" align="center" noWrap>
+                <Group spacing="sm">
+                  <Box style={{ width: 32, height: 24, borderRadius: 4, overflow: 'hidden', display: 'flex' }}>
+                    <FlagIcon country={country} />
+                  </Box>
+                  <Stack spacing={0}>
+                    <Text size="sm" weight={600} lineClamp={1}>{countryName || "Select Location"}</Text>
+                    <Text size="xs" color="dimmed" lineClamp={1} style={{ minHeight: 16 }}>
+                      {isConnected ? (cityConnected || '\u00A0') : "Smart Location"}
+                    </Text>
+                  </Stack>
+                </Group>
+                <Text size="xs" weight={700} color="cube.5" pr={4}>›</Text>
+              </Group>
+            </Paper>
+          </UnstyledButton>
+
+          <Group grow spacing="xs">
+            <HoverCard width="auto" shadow="md" disabled={!isConnected} withArrow>
+              <HoverCard.Target>
+                <Paper shadow="sm" radius="md" p="xs" withBorder bg={isDark ? theme.colors.dark[6] : "white"} style={{ textAlign: 'center' }}>
+                  <Group position="center" spacing={4}>
+                    <FaServer size="1rem" color={theme.colors.cube[5]} />
+                    <Text size="sm" weight={600}>{isConnected && nodeId ? `#${nodeId}` : "--"}</Text>
+                  </Group>
+                  <Text size="xs" color="dimmed">NODE</Text>
+                </Paper>
+              </HoverCard.Target>
+              <HoverCard.Dropdown>
+                <Stack spacing="xs">
+                  <Group><RiArrowDownFill color={theme.colors.green[6]} /><Text size="sm">{nodeDownload} Mbps</Text></Group>
+                  <Group><RiArrowUpFill color={theme.colors.blue[6]} /><Text size="sm">{nodeUpload} Mbps</Text></Group>
+                </Stack>
+              </HoverCard.Dropdown>
+            </HoverCard>
+
+            <Paper shadow="sm" radius="md" p="xs" withBorder bg={isDark ? theme.colors.dark[6] : "white"} style={{ textAlign: 'center' }}>
+              <Group position="center" spacing={4}>
+                <Text size="sm" weight={700} color={theme.colors.cube[5]}>Ø</Text>
+                <Text size="sm" weight={600}>{isConnected ? Number(nodePrice).toFixed(4) : "0"}</Text>
+              </Group>
+              <Text size="xs" color="dimmed">Cost/GB</Text>
+            </Paper>
+          </Group>
+        </Stack>
+
+        <Notifications style={{ width: 'auto' }} position="bottom-right" zIndex={6} />
         <Load />
-        </BackgroundImage>
-        </Box>
-        
+      </Box>
     </>
   )
 }

@@ -1,4 +1,4 @@
-import { Text } from "@mantine/core";
+import { Text, useMantineTheme, Box } from "@mantine/core";
 import logo from "data-base64:~assets/img/octa.png";
 import { Image } from '@mantine/core';
 import { useEffect, useState } from "react";
@@ -36,6 +36,8 @@ export type countryInfoType = {
 export function Load(){
   const [applyScale, setApplyScale] = useState(false);
   const [zIndexValue, setZIndexValue] = useState(5);
+  const theme = useMantineTheme()
+  const isDark = theme.colorScheme === 'dark'
 
   async function saveCountryData(selectedData){
     let groupedData: countryInfoType = selectedData.reduce((acc, node) => {
@@ -130,33 +132,45 @@ export function Load(){
   }, [])
   
     return(
-        <>
-        <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        alignItems: "center",
-        width: 350,
-        height: 500,
-        top:0,
-        left:0,
-        position: "absolute",
-        backgroundImage: "linear-gradient(150deg,#CC1B99, #040308, #471288)",
-        zIndex:zIndexValue
-      }}>
+      <Box
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "flex-start",
+          alignItems: "center",
+          paddingTop: 130,
+          width: 350,
+          height: 520,
+          top: 0,
+          left: 0,
+          position: "absolute",
+          backgroundColor: isDark ? theme.colors.dark[7] : theme.colors.gray[0],
+          zIndex: zIndexValue
+        }}
+      >
         <Image
-              width={70}
-              alt="OctaVPN"
-              src={logo}
-              style={{
-                filter:'drop-shadow(0 0 4mm rgb(160, 0, 210))',
-                transform: applyScale ? 'scale(1.2)' : 'scale(1.1)',
-                transition: 'transform 0.5s ease-in-out'
-              }}
-            />
-        <Text style={{color:'rgba(255,255,255,0.8)', fontWeight:'bold', position:'absolute', top:400, left: 140}}>Loading...</Text>
-      </div>
-        </>
+          width={80}
+          alt="OctaVPN"
+          src={logo}
+          style={{
+            filter: isDark 
+              ? `drop-shadow(0 0 30px ${theme.fn.rgba(theme.colors.cube[5], 0.6)})`
+              : `drop-shadow(0 0 25px ${theme.fn.rgba(theme.colors.cube[5], 0.5)})`,
+            transform: applyScale ? 'scale(1.15)' : 'scale(1)',
+            transition: 'transform 0.8s ease-in-out'
+          }}
+        />
+        <Text 
+          style={{
+            color: isDark ? theme.colors.gray[4] : theme.colors.gray[6], 
+            fontWeight: 600, 
+            position: 'absolute', 
+            bottom: 60,
+            letterSpacing: 1
+          }}
+        >
+          Loading...
+        </Text>
+      </Box>
     )
 }

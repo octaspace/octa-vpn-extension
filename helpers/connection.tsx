@@ -3,7 +3,7 @@ import { secureStorage, storage } from "./storage";
 import type { proxyConfig, vpnDetails } from "@octaspace/api.js/build/src/types";
 import { NotifiyError } from "~components/notifiyerror";
 import { RiCoinFill, RiGlobalLine } from "react-icons/ri";
-import { ApiError, Octa } from "@octaspace/api.js";
+import { ApiError, Octa, UUIDError } from "@octaspace/api.js";
 import { BsEmojiDizzy } from "react-icons/bs";
 import { FaFaceSmile } from "react-icons/fa6";
 import { GiDominoMask } from "react-icons/gi";
@@ -56,6 +56,11 @@ export async function connect(nodeid:number) {
     }
     catch(err:any)
     {
+        await storage.setItem("proxyStatus","Disconnected")
+        if(err instanceof UUIDError){
+            NotifiyError('Node unavailable, try another', <BsEmojiDizzy />)
+            return
+        }
         if(err instanceof ApiError){
             NotifiyError('Network Error', <RiGlobalLine />)
             return
