@@ -7,7 +7,6 @@ import { RiMoonClearLine, RiSunLine } from "react-icons/ri";
 
 function Settings() {
   const [advancedView, setAdvancedView] = useState(false)
-  const [maxPrice, setMaxPrice] = useState(0.00)
   const navigate = useNavigate();
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const theme = useMantineTheme();
@@ -17,42 +16,33 @@ function Settings() {
 
   async function loadValues() {
     setAdvancedView(await storage.getItem("advancedView"))
-    if(await storage.getItem<number>("maxPrice")!=0){
-      setMaxPrice(await storage.getItem("avgPrice"))
-    }
-    else{
-      setMaxPrice(await storage.getItem("maxPrice"))
-    }
   }
 
   async function setAdvView(value:boolean) {
     await storage.setItem("advancedView",value)
   }
 
-  async function setMaximumPrice(value:number | '') {
-    if(typeof(value)=="string"||value==0){
-      value=await storage.getItem("avgPrice")
-    }
-    await storage.setItem("maxPrice",value)
-  }
-
-  async function listenValues() {
-    storage.watch({"advancedView":(key)=>{setAdvancedView(key.newValue)}})
-    storage.watch({"maxPrice":(key)=>{setMaxPrice(key.newValue)}})
-  }
-
   useEffect(()=>{
     loadValues()
-    listenValues()
-  },[])
-  const signout = async ()=>{
-    clearData()
-    let proxyStatus = await storage.getItem("proxyStatus");
-    if(proxyStatus=="Connected"||proxyStatus=="Connecting"){
-      disconnect()
+
+    const watchCb = {
+      "advancedView":(key: any)=>{setAdvancedView(key.newValue)},
     }
+    storage.watch(watchCb)
+    return () => { storage.unwatch(watchCb) }
+  },[])
+
+  const signout = async ()=>{
+    // Disconnect FIRST — needs token to call stopVPN server-side
+    const proxyStatus = await storage.getItem("proxyStatus")
+    if(proxyStatus=="Connected"||proxyStatus=="Connecting"){
+      await disconnect()
+    }
+    // Clear data AFTER disconnect completes
+    await clearData()
     navigate('/login')
   }
+
   return (
     <>
     <Stack>

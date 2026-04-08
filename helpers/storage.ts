@@ -33,7 +33,7 @@ export async function tokenExists() {
     if(token.length==64){
         return true
     }
-    
+
     return false
 }
 
@@ -46,20 +46,43 @@ export async function clearData() {
         node_id:0,
         traffic_price_ether:0
     }
-    await secureStorage.set("token", "")
-    await storage.set("nodeInfo", "")
-    await storage.set("balance", 0.00)
-    await storage.set("last_interacted", 0)
-    await storage.set("countryInfoChunks", 0)
-    await storage.set("cityLocal", "")
-    await storage.set("cityConnected", "")
-    await storage.set("countryLocal", "")
-    await storage.set("countryConnected", "")
-    await storage.set("ipConnected", "")
-    await storage.set("iplocal", "")
-    await storage.set("advancedView", false)
-    await storage.set("maxPrice", 0.00)
-    await storage.set("avgPrice", 0.00)
-    await storage.set("lastSelectedNodeIndex", 0)
-    await storage.set("selectedNodeData", nodeStorageData)
+
+    // Clean up all chunk keys before resetting counters
+    const countryChunks: number = await storage.get("countryInfoChunks") ?? 0
+    const nodeChunks: number = await storage.get("nodeInfoChunks") ?? 0
+    const chunkRemovals: Promise<void>[] = []
+    for (let i = 0; i <= countryChunks; i++) {
+        chunkRemovals.push(storage.remove(`countryInfo${i}`))
+    }
+    for (let i = 0; i <= nodeChunks; i++) {
+        chunkRemovals.push(storage.remove(`nodeInfo${i}`))
+    }
+    await Promise.all(chunkRemovals)
+
+    // Clear all known keys in parallel
+    await Promise.all([
+        secureStorage.set("token", ""),
+        storage.set("nodeInfo", ""),
+        storage.set("balance", "0.000"),
+        storage.set("last_interacted", 0),
+        storage.set("countryInfoChunks", 0),
+        storage.set("nodeInfoChunks", 0),
+        storage.set("cityLocal", ""),
+        storage.set("cityConnected", ""),
+        storage.set("countryLocal", ""),
+        storage.set("countryConnected", ""),
+        storage.set("ipConnected", ""),
+        storage.set("ipLocal", ""),
+        storage.set("advancedView", false),
+        storage.set("maxPrice", 0.00),
+        storage.set("avgPrice", 0.00),
+        storage.set("lastSelectedNodeIndex", 0),
+        storage.set("selectedNodeData", nodeStorageData),
+        storage.set("proxyStatus", "Disconnected"),
+        storage.set("uuid", ""),
+        storage.set("vpn_ip", ""),
+        storage.set("vpn_city", ""),
+        storage.set("vpn_country", ""),
+        storage.set("authExpired", false),
+    ])
 }

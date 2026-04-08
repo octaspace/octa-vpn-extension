@@ -6,7 +6,7 @@ import { RiSearchLine } from "react-icons/ri";
 import { storage } from "~helpers/storage";
 import type { NodeDataType, countryInfoType } from "~pages/load";
 import { FcGlobe } from "react-icons/fc";
-import { ArrowDown, ArrowUp } from "@phosphor-icons/react";
+import { ArrowDownIcon as ArrowDown, ArrowUpIcon as ArrowUp } from "@phosphor-icons/react";
 
 interface ListParam {
     close(country: string, data: countryInfoType, nodeData:NodeDataType[], auto:boolean, nodeid:number, node_price:number): void;
@@ -34,10 +34,6 @@ interface ListParam {
     async function loadValues() {
       setAdvancedView(await storage.getItem("advancedView"))
       setAvgPrice(await storage.getItem("avgPrice"))
-    }
-
-    async function listenValues() {
-      storage.watch({"advancedView":(key)=>{setAdvancedView(key.newValue)}})
     }
 
     async function setAdvView(value:boolean) {
@@ -68,7 +64,9 @@ interface ListParam {
         let mergedGroupedData: NodeDataType[] = [];
         for (let i = 0; i <= totalChunks; i++) {
           const chunk: NodeDataType[] | null = await storage.getItem(`nodeInfo${i}`);
-          mergedGroupedData = [...mergedGroupedData, ...chunk];
+          if (chunk) {
+            mergedGroupedData = [...mergedGroupedData, ...chunk];
+          }
         }
         setNodeData(mergedGroupedData);
       } catch (error) {
@@ -76,11 +74,14 @@ interface ListParam {
       }
     };
 
-    useEffect(() => {      
+    useEffect(() => {
       loadValues()
       fetchCountryData()
       fetchNodeData()
-      listenValues()
+
+      const advancedViewCb = {"advancedView":(key: any)=>{setAdvancedView(key.newValue)}}
+      storage.watch(advancedViewCb)
+      return () => { storage.unwatch(advancedViewCb) }
     }, []);
   
     const sortedEntries = Object.entries(countryInfo ?? {})

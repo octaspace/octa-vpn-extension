@@ -1,69 +1,69 @@
 export type ProxyState = 'Disconnected' | 'Connecting' | 'Connected' | 'NoPermission';
+
 export class ProxyService{
-    private state:ProxyState
+    private state: ProxyState
 
     constructor() {
     }
 
-    getState() {
-        return new Promise((resolve, reject) => {
+    getState(): Promise<ProxyState> {
+        return new Promise<ProxyState>((resolve) => {
             if (this.state !== undefined) {
-                resolve(this.state);
-            } else {
-                if(process.env.PLASMO_BROWSER=="chrome"){
-                    chrome.proxy.settings.get({ 'incognito': false }, (config) => {
-                        if (config.levelOfControl === "controlled_by_this_extension" || config.levelOfControl === "controllable_by_this_extension") {
-                            if (config.value.mode === "fixed_servers") {
-                                this.state = "Connected";
-                                resolve(this.state);
-                            } else {
-                                this.state = "Disconnected";
-                                resolve(this.state);
-                            }
-                        } else {
-                            this.state = "NoPermission";
-                            resolve(this.state);
-                        }
-                    });
-                }
-                if(process.env.PLASMO_BROWSER=="firefox"){
-                    browser.proxy.settings.get({}).then((config) => {
-                        if (config.levelOfControl === "controlled_by_this_extension" || config.levelOfControl === "controllable_by_this_extension") {
-                            if (config.value.proxyType === "fixed_servers") {
-                                this.state = "Connected";
-                                resolve(this.state);
-                            } else {
-                                this.state = "Disconnected";
-                                resolve(this.state);
-                            }
-                        } else {
-                            this.state = "NoPermission";
-                            resolve(this.state);
-                        }
-                      });
-                }
+                resolve(this.state)
+                return
             }
-        });
+            if(process.env.PLASMO_BROWSER=="chrome"){
+                chrome.proxy.settings.get({ 'incognito': false }, (config) => {
+                    if (config.levelOfControl === "controlled_by_this_extension" ||
+                        config.levelOfControl === "controllable_by_this_extension") {
+                        this.state = config.value.mode === "fixed_servers" ? "Connected" : "Disconnected"
+                    } else {
+                        this.state = "NoPermission"
+                    }
+                    resolve(this.state)
+                })
+            } else if(process.env.PLASMO_BROWSER=="firefox"){
+                browser.proxy.settings.get({}).then((config) => {
+                    if (config.levelOfControl === "controlled_by_this_extension" ||
+                        config.levelOfControl === "controllable_by_this_extension") {
+                        // Firefox uses "manual" for active proxy, not "fixed_servers"
+                        this.state = config.value.proxyType === "manual" ? "Connected" : "Disconnected"
+                    } else {
+                        this.state = "NoPermission"
+                    }
+                    resolve(this.state)
+                })
+            } else {
+                // Unknown environment — don't hang forever
+                this.state = "Disconnected"
+                resolve(this.state)
+            }
+        })
     }
-    
+
     updateState(){
         if(process.env.PLASMO_BROWSER=="chrome"){
             chrome.proxy.settings.onChange.addListener((config) => {
-                if(config.levelOfControl=="controlled_by_this_extension"||config.levelOfControl=="controllable_by_this_extension"){
-                    if(config.value.mode == "fixed_servers"){
-                        this.state = "Connected"
-                    }
-                    else{
-                        this.state = "Disconnected"
-                    }
-                }
-                else{
+                if(config.levelOfControl=="controlled_by_this_extension" ||
+                   config.levelOfControl=="controllable_by_this_extension"){
+                    this.state = config.value.mode == "fixed_servers" ? "Connected" : "Disconnected"
+                } else {
                     this.state = "NoPermission"
                 }
             })
-        }
-        if(process.env.PLASMO_BROWSER=="firefox"){
-
+        } else if(process.env.PLASMO_BROWSER=="firefox"){
+            try {
+                browser.proxy.settings.onChange?.addListener((config: any) => {
+                    if (config.levelOfControl === "controlled_by_this_extension" ||
+                        config.levelOfControl === "controllable_by_this_extension") {
+                        this.state = config.value?.proxyType === "manual" ? "Connected" : "Disconnected"
+                    } else {
+                        this.state = "NoPermission"
+                    }
+                })
+            } catch {
+                // Firefox version doesn't support onChange — degrade gracefully
+            }
         }
     }
 
@@ -73,98 +73,81 @@ export class ProxyService{
                 chrome.proxy.settings.get(
                     { 'incognito': false },
                     function (config) {
-                        if (config.value.mode == "fixed_servers") {
-                            resolve(true);
-                        } else {
-                            resolve(false);
-                        }
+                        resolve(config.value.mode == "fixed_servers")
                     }
-                );
-            }
-            if(process.env.PLASMO_BROWSER=="firefox"){
+                )
+            } else if(process.env.PLASMO_BROWSER=="firefox"){
                 browser.proxy.settings.get({}).then((config) => {
-                    if (config.levelOfControl === "controlled_by_this_extension" || config.levelOfControl === "controllable_by_this_extension") {
-                        if (config.value.proxyType === "manual") {
-                            resolve(true);
-                        } else {
-                            this.state = "Disconnected";
-                            resolve(false);
-                        }
+                    if (config.levelOfControl === "controlled_by_this_extension" ||
+                        config.levelOfControl === "controllable_by_this_extension") {
+                        resolve(config.value.proxyType === "manual")
                     } else {
-                        resolve(false);
+                        resolve(false)
                     }
-                });
+                })
+            } else {
+                resolve(false)
             }
-        });
+        })
     }
 
-    async start(ip:string, port:number): Promise<boolean>{
-            if(await this.isConnected()){
-                await this.stop()
-            }
-            if(process.env.PLASMO_BROWSER=="chrome"){
-                let config = {
-                    mode: "fixed_servers",
-                    rules: {
-                     singleProxy: {
+    async start(ip: string, port: number): Promise<boolean>{
+        if(await this.isConnected()){
+            await this.stop()
+        }
+        if(process.env.PLASMO_BROWSER=="chrome"){
+            const config = {
+                mode: "fixed_servers",
+                rules: {
+                    singleProxy: {
                         scheme: "http",
                         host: ip,
                         port: port
-                      },
-                      bypassList: ["<local>", "127.0.0.1", "api.octa.computer", "api.octa.space"]
-                    }
-                  };
-                  return new Promise((resolve) => {
-                    chrome.proxy.settings.set(
-                        {value: config, scope: 'regular'},
-                        function() {
-                            console.log("Connected")
-                            resolve(true);
-                        }
-                      );
-                  })
+                    },
+                    bypassList: ["<local>", "127.0.0.1", "api.octa.computer", "api.octa.space"]
+                }
             }
-            if(process.env.PLASMO_BROWSER=="firefox"){
-                let config = {
-                    proxyType: "manual",
-                    http: `http://${ip}:${port}`,
-                    httpProxyAll: true,
-                    passthrough: ["api.octa.computer", "api.octa.space"]
-                  };
-                  return new Promise((resolve) => {
-                    browser.proxy.settings.set(
-                        {value: config},
-                        function() {
-                            console.log("Connected")
-                            resolve(true);
-                        }
-                      );
-                  })
+            return new Promise<boolean>((resolve) => {
+                chrome.proxy.settings.set(
+                    {value: config, scope: 'regular'},
+                    function() { resolve(true) }
+                )
+            })
+        }
+        if(process.env.PLASMO_BROWSER=="firefox"){
+            const config = {
+                proxyType: "manual",
+                http: `http://${ip}:${port}`,
+                httpProxyAll: true,
+                passthrough: ["api.octa.computer", "api.octa.space"]
             }
-
+            return new Promise<boolean>((resolve) => {
+                browser.proxy.settings.set(
+                    {value: config},
+                    function() { resolve(true) }
+                )
+            })
+        }
+        return false
     }
 
     async stop(): Promise<boolean> {
-        return new Promise(async (resolve) => {
-            if(await this.isConnected()){
-                if(process.env.PLASMO_BROWSER=="chrome"){
-                    let config = {
-                        mode: "direct",
-                      };
-                      chrome.proxy.settings.set(
-                        {value: config, scope: 'regular'},
-                        function() {
-                            resolve(true)
-                        }
-                      );
-                }
-                if(process.env.PLASMO_BROWSER=="firefox"){
-                    browser.proxy.settings.clear({},function(){
-                        resolve(true)
-                    })
-                }
-            }
-            resolve(true)
-        })        
+        const connected = await this.isConnected()
+        if(!connected) return true
+
+        if(process.env.PLASMO_BROWSER=="chrome"){
+            return new Promise<boolean>((resolve) => {
+                chrome.proxy.settings.set(
+                    {value: { mode: "direct" }, scope: 'regular'},
+                    function() { resolve(true) }
+                )
+            })
+        }
+        if(process.env.PLASMO_BROWSER=="firefox"){
+            return new Promise<boolean>((resolve) => {
+                browser.proxy.settings.clear({}, function(){ resolve(true) })
+            })
+        }
+        return true
     }
 }

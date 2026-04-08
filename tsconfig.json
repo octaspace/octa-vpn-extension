@@ -9,6 +9,7 @@
     "./**/*.tsx"
   ],
   "compilerOptions": {
+    "types": ["node", "chrome"],
     "jsx": "react-jsx",
     "moduleResolution": "bundler",
     "paths": {

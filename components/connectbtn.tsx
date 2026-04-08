@@ -16,12 +16,15 @@ export function HomeButton({node_id}:HomeButtonProps){
     const isDark = theme.colorScheme === 'dark'
 
     useEffect(()=>{
-        storage.watch({"proxyStatus":(key)=>{ setStatus(key.newValue) }})
         async function getStatus(){
             const status:string = await storage.getItem("proxyStatus")
             setStatus(status)
         }
         getStatus()
+
+        const proxyCb = {"proxyStatus":(key: any)=>{ setStatus(key.newValue) }}
+        storage.watch(proxyCb)
+        return () => { storage.unwatch(proxyCb) }
     },[])
 
     const activeBg1 = Status === 'Connecting'
@@ -49,7 +52,10 @@ export function HomeButton({node_id}:HomeButtonProps){
     return(
         <>
         <UnstyledButton
-            onClick={()=>{Status=="Disconnected" ? connect(node_id): disconnect()}}
+            onClick={()=>{
+                if(Status === "Connecting") return
+                Status === "Disconnected" ? connect(node_id) : disconnect()
+            }}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
             style={{ transition: 'transform 150ms ease', transform: hovered ? 'scale(1.04)' : 'scale(1)' }}

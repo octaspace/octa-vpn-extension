@@ -1,4 +1,5 @@
 import { Text, useMantineTheme, Box } from "@mantine/core";
+import { keyframes } from "@emotion/react";
 import logo from "data-base64:~assets/img/octa.png";
 import { Image } from '@mantine/core';
 import { useEffect, useState } from "react";
@@ -8,7 +9,7 @@ import { RiGlobalLine } from "react-icons/ri";
 import type { vpnNodes } from "@octaspace/api.js/build/src/types";
 import { secureStorage, storage } from "~helpers/storage";
 import { wait } from "~helpers/wait";
-import { ApiError, Octa } from "@octaspace/api.js";
+import { ApiError, KeyError, Octa } from "@octaspace/api.js";
 import { BsEmojiDizzy } from "react-icons/bs";
 import { LocalInfo } from "~helpers/localinfo";
 
@@ -39,14 +40,24 @@ export function Load(){
   const theme = useMantineTheme()
   const isDark = theme.colorScheme === 'dark'
 
-  async function saveCountryData(selectedData){
+  async function clearOldChunks(prefix: string, countKey: string) {
+    const oldCount: number = await storage.getItem(countKey)
+    if (oldCount != null && oldCount >= 0) {
+      const removals: Promise<void>[] = []
+      for (let i = 0; i <= oldCount; i++) {
+        removals.push(storage.removeItem(`${prefix}${i}`))
+      }
+      await Promise.all(removals)
+    }
+  }
+
+  async function saveCountryData(selectedData: SelectedVPNNode[]) {
     let groupedData: countryInfoType = selectedData.reduce((acc, node) => {
       const { country, node_id, traffic_price_ether, country_iso } = node;
       acc[country] = acc[country] || [];
       acc[country].push({ node_id, traffic_price_ether, country_iso });
       return acc;
-  }, {});
-    selectedData.sort((a, b) => a.country.localeCompare(b.country));
+    }, {});
     for (const country in groupedData) {
       groupedData[country].sort((a, b) => a.traffic_price_ether - b.traffic_price_ether);
     }
@@ -55,13 +66,13 @@ export function Load(){
     for (let i = 0; i < countryKeys.length; i += countryPerChunk) {
       const chunkKeys = countryKeys.slice(i, i + countryPerChunk);
       const chunk: countryInfoType = {};
-    
       chunkKeys.forEach((countryKey) => {
         chunk[countryKey] = groupedData[countryKey];
       });
-      await storage.setItem("countryInfoChunks",i/countryPerChunk)
       await storage.setItem(`countryInfo${i / countryPerChunk}`, chunk);
     }
+    // Set final count AFTER loop — reflects actual number of chunks saved
+    await storage.setItem("countryInfoChunks", Math.ceil(countryKeys.length / countryPerChunk) - 1)
   }
 
   async function saveNodeData(selectedData: NodeDataType[]) {
@@ -69,9 +80,10 @@ export function Load(){
     for (let i = 0; i < selectedData.length; i += nodesPerChunk) {
       const chunk = selectedData.slice(i, i + nodesPerChunk);
       const chunkNumber = Math.floor(i / nodesPerChunk);
-      await storage.setItem("nodeInfoChunks", chunkNumber);
       await storage.setItem(`nodeInfo${chunkNumber}`, chunk);
     }
+    // Set final count AFTER loop
+    await storage.setItem("nodeInfoChunks", Math.floor((selectedData.length - 1) / nodesPerChunk))
   }
 
   async function loadNodes() {
@@ -86,6 +98,9 @@ export function Load(){
         let data:vpnNodes[] = await new Octa(await secureStorage.getItem("token")).getVPNNodes()
         const avgTrafficPrice:number = parseFloat((data.reduce((sum, node) => sum + (node.traffic_price_ether), 0) / data.length).toFixed(2));
         await storage.setItem("avgPrice",avgTrafficPrice)
+        // Clear stale chunks before saving fresh data
+        await clearOldChunks("countryInfo", "countryInfoChunks")
+        await clearOldChunks("nodeInfo", "nodeInfoChunks")
         let countryData: SelectedVPNNode[] = data.map(node => ({
           node_id: node.node_id,
           country: node.country,
@@ -103,17 +118,23 @@ export function Load(){
         await storage.setItem("balance",balance)
       }
       await storage.setItem("last_interacted",Date.now())
-      await wait(1000)
-      setZIndexValue(-3)
     }
     catch(err:any)
     {
-      if(err instanceof ApiError){
+      if(err instanceof KeyError){
+        await secureStorage.set("token", "")
+        await storage.setItem("authExpired", true)
+      } else if(err instanceof ApiError){
         NotifiyError('Network Error', <RiGlobalLine />)
-        return
+      } else {
+        console.error("loadNodes error:", err)
+        NotifiyError("Failed to load nodes", <BsEmojiDizzy />)
       }
-      console.log(err.message)
-      NotifiyError(`Unexpected Error:${err.message}`,<BsEmojiDizzy />)
+    }
+    finally {
+      // Always hide the loader — even on error
+      await wait(1000)
+      setZIndexValue(-3)
     }
   }
 
@@ -130,47 +151,107 @@ export function Load(){
     updateBalance()
     loadNodes()
   }, [])
+
+  const pulseGlow = keyframes`
+    0% { transform: scale(0.8); opacity: 0.1; }
+    50% { transform: scale(1.5); opacity: 0.5; }
+    100% { transform: scale(0.8); opacity: 0.1; }
+  `;
+
+  const shimmer = keyframes`
+    0% { background-position: -200% center; }
+    100% { background-position: 200% center; }
+  `;
   
     return(
       <Box
         style={{
           display: "flex",
           flexDirection: "column",
-          justifyContent: "flex-start",
           alignItems: "center",
-          paddingTop: 130,
           width: 350,
           height: 520,
           top: 0,
           left: 0,
           position: "absolute",
-          backgroundColor: isDark ? theme.colors.dark[7] : theme.colors.gray[0],
-          zIndex: zIndexValue
+          backgroundColor: isDark ? theme.colors.dark[8] : theme.fn.lighten(theme.colors.gray[1], 0.5),
+          zIndex: zIndexValue,
+          overflow: "hidden",
         }}
       >
-        <Image
-          width={80}
-          alt="OctaVPN"
-          src={logo}
-          style={{
-            filter: isDark 
-              ? `drop-shadow(0 0 30px ${theme.fn.rgba(theme.colors.cube[5], 0.6)})`
-              : `drop-shadow(0 0 25px ${theme.fn.rgba(theme.colors.cube[5], 0.5)})`,
-            transform: applyScale ? 'scale(1.15)' : 'scale(1)',
-            transition: 'transform 0.8s ease-in-out'
+        {/* Animated Background Glow */}
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 117, // Center is exactly at 217px to match the power button on the main screen
+            width: 200,
+            height: 200,
+            borderRadius: '50%',
+            background: `radial-gradient(circle, ${theme.colors.cube[5]} 0%, transparent 70%)`,
+            filter: 'blur(40px)',
+            animation: `${pulseGlow} 4s ease-in-out infinite`,
+            zIndex: 1,
           }}
         />
-        <Text 
-          style={{
-            color: isDark ? theme.colors.gray[4] : theme.colors.gray[6], 
-            fontWeight: 600, 
-            position: 'absolute', 
-            bottom: 60,
-            letterSpacing: 1
+
+        {/* Logo Container */}
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 157, // Center is exactly at 217px
+            width: 120,
+            height: 120,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 2,
+            transition: 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
+            transform: applyScale ? 'scale(1.05)' : 'scale(1)',
           }}
         >
-          Loading...
-        </Text>
+          <Image
+            width={56}
+            alt="OctaVPN"
+            src={logo}
+            style={{
+              filter: isDark 
+                ? `drop-shadow(0 0 15px ${theme.fn.rgba(theme.colors.cube[5], 0.6)})`
+                : `drop-shadow(0 0 10px ${theme.fn.rgba(theme.colors.cube[5], 0.5)})`,
+              transition: 'all 0.8s ease-in-out',
+            }}
+          />
+        </Box>
+
+        {/* Text Container aligned with Login page text spacing */}
+        <Box 
+          sx={{ 
+            position: 'absolute', 
+            top: 157 + 120 + 32, // Matches Title placement of Login screen roughly 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center', 
+            width: '100%',
+            zIndex: 2
+          }}
+        >
+          <Text 
+            sx={{
+              fontWeight: 700, 
+              letterSpacing: 4,
+              textTransform: 'uppercase',
+              fontSize: 13,
+              backgroundImage: isDark 
+                ? 'linear-gradient(90deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.9) 50%, rgba(255,255,255,0.2) 100%)'
+                : `linear-gradient(90deg, ${theme.colors.gray[4]} 0%, ${theme.colors.gray[8]} 50%, ${theme.colors.gray[4]} 100%)`,
+              backgroundSize: '200% auto',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              animation: `${shimmer} 2.5s linear infinite`,
+            }}
+          >
+            Loading
+          </Text>
+        </Box>
       </Box>
     )
 }

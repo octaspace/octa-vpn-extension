@@ -6,8 +6,9 @@
   "author": "",
   "scripts": {
     "dev": "plasmo dev --verbose",
-    "build": "plasmo build",
-    "firefox": "plasmo build --target=firefox-mv2 --hoist --zip",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit && plasmo build",
+    "firefox": "tsc --noEmit && plasmo build --target=firefox-mv2 --hoist --zip",
     "test": "plasmo test"
   },
   "dependencies": {
@@ -36,6 +37,7 @@
     "@types/react": "18.2.20",
     "@types/react-dom": "18.2.7",
     "prettier": "3.0.2",
+    "svgo": "^3.3.3",
     "typescript": "5.8.3"
   },
   "manifest": {
