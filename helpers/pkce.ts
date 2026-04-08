@@ -4,8 +4,47 @@
 
 const STORAGE_KEY = "pkce_verifier";
 
-// Type guard for browser API
-declare const browser: typeof chrome | undefined;
+type AsyncStorageArea = {
+  get(key: string): Promise<Record<string, string | undefined> | undefined>
+  set(items: Record<string, string>): Promise<void>
+  remove(key: string): Promise<void>
+}
+
+function getSessionStorage():
+  | { area: AsyncStorageArea; label: string }
+  | undefined {
+  if (process.env.PLASMO_BROWSER === "firefox" && browser.storage?.session) {
+    return {
+      area: browser.storage.session,
+      label: "browser.storage.session"
+    }
+  }
+
+  if (chrome.storage?.session) {
+    return {
+      area: chrome.storage.session as AsyncStorageArea,
+      label: "chrome.storage.session"
+    }
+  }
+}
+
+function getLocalStorage():
+  | { area: AsyncStorageArea; label: string }
+  | undefined {
+  if (process.env.PLASMO_BROWSER === "firefox" && browser.storage?.local) {
+    return {
+      area: browser.storage.local,
+      label: "browser.storage.local"
+    }
+  }
+
+  if (chrome.storage?.local) {
+    return {
+      area: chrome.storage.local as AsyncStorageArea,
+      label: "chrome.storage.local"
+    }
+  }
+}
 
 /**
  * Generates a cryptographically random code verifier (43-128 characters)
@@ -32,24 +71,17 @@ export async function generateCodeChallenge(verifier: string): Promise<string> {
  */
 export async function storePkceVerifier(verifier: string): Promise<void> {
   try {
-    // Try session storage first (available in Chrome 102+ and Firefox)
-    if (typeof chrome !== 'undefined' && chrome.storage?.session) {
-      await chrome.storage.session.set({ [STORAGE_KEY]: verifier });
-      return;
+    const sessionStorage = getSessionStorage()
+    if (sessionStorage) {
+      await sessionStorage.area.set({ [STORAGE_KEY]: verifier })
+      return
     }
-    if (typeof browser !== 'undefined' && (browser as any).storage?.session) {
-      await (browser as any).storage.session.set({ [STORAGE_KEY]: verifier });
-      return;
-    }
-  } catch (e) {
-    // Fallback to local storage
+  } catch {
   }
   
-  // Fallback to local storage
-  if (typeof chrome !== 'undefined' && chrome.storage?.local) {
-    await chrome.storage.local.set({ [STORAGE_KEY]: verifier });
-  } else if (typeof browser !== 'undefined' && (browser as any).storage?.local) {
-    await (browser as any).storage.local.set({ [STORAGE_KEY]: verifier });
+  const localStorage = getLocalStorage()
+  if (localStorage) {
+    await localStorage.area.set({ [STORAGE_KEY]: verifier })
   }
 }
 
@@ -60,39 +92,24 @@ export async function consumePkceVerifier(): Promise<string | null> {
   let verifier: string | null = null;
   
   try {
-    // Try session storage first
-    if (typeof chrome !== 'undefined' && chrome.storage?.session) {
-      const result = await chrome.storage.session.get(STORAGE_KEY);
-      verifier = result[STORAGE_KEY] || null;
+    const sessionStorage = getSessionStorage()
+    if (sessionStorage) {
+      const result = await sessionStorage.area.get(STORAGE_KEY)
+      verifier = result?.[STORAGE_KEY] ?? null
       if (verifier) {
-        await chrome.storage.session.remove(STORAGE_KEY);
-        return verifier;
+        await sessionStorage.area.remove(STORAGE_KEY)
+        return verifier
       }
     }
-    if (typeof browser !== 'undefined' && (browser as any).storage?.session) {
-      const result = await (browser as any).storage.session.get(STORAGE_KEY);
-      verifier = result[STORAGE_KEY] || null;
-      if (verifier) {
-        await (browser as any).storage.session.remove(STORAGE_KEY);
-        return verifier;
-      }
-    }
-  } catch (e) {
-    // Try local storage as fallback
+  } catch {
   }
   
-  // Try local storage
-  if (typeof chrome !== 'undefined' && chrome.storage?.local) {
-    const result = await chrome.storage.local.get(STORAGE_KEY);
-    verifier = result[STORAGE_KEY] || null;
+  const localStorage = getLocalStorage()
+  if (localStorage) {
+    const result = await localStorage.area.get(STORAGE_KEY)
+    verifier = result?.[STORAGE_KEY] ?? null
     if (verifier) {
-      await chrome.storage.local.remove(STORAGE_KEY);
-    }
-  } else if (typeof browser !== 'undefined' && (browser as any).storage?.local) {
-    const result = await (browser as any).storage.local.get(STORAGE_KEY);
-    verifier = result[STORAGE_KEY] || null;
-    if (verifier) {
-      await (browser as any).storage.local.remove(STORAGE_KEY);
+      await localStorage.area.remove(STORAGE_KEY)
     }
   }
   

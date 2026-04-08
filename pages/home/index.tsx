@@ -16,11 +16,15 @@ import { type NodeStorageData, storage } from "~helpers/storage";
 import { Load, type NodeDataType, type countryInfoType } from "~pages/load";
 import { Notifications } from "@mantine/notifications";
 import { FaServer } from "react-icons/fa6";
+import { BsEmojiDizzy } from "react-icons/bs";
 import { FlagIcon } from "./flagicon";
 import { proxy } from "~background";
 import { connect, disconnect } from "~helpers/connection";
+import { NotifiyError } from "~components/notifiyerror";
+import { useNavigate } from "react-router-dom";
 
 function Home() {
+  const navigate = useNavigate();
   const [balanceValue, setBalanceValue] = useState("..")
   const [openedSettings, { open:openSettings, close:closeSettings }] = useDisclosure(false);
   const [openedList, { open:openList, close:closeList }] = useDisclosure(false);
@@ -41,15 +45,32 @@ function Home() {
 
   const CloseModel = async (country:string,data:countryInfoType, nodeData:NodeDataType[], auto:boolean, nodeid?:number, node_price?:number) =>{
     const avgPrice: number = await storage.getItem("avgPrice")
+    const balance = parseFloat(balanceValue)
+
     if(auto){
-        const countries = Object.keys(data);
-        let randomCountryIndex = Math.floor(countries.length* Math.random());
-        let randomCountry = countries[randomCountryIndex];
-        let eligibleNodes = data[randomCountry].filter(node => node.traffic_price_ether <= avgPrice && node.traffic_price_ether <= parseFloat(balanceValue));
-        while (!eligibleNodes || eligibleNodes.length === 0) {
-          randomCountryIndex = Math.floor(countries.length * Math.random());
-          randomCountry = countries[randomCountryIndex];
-          eligibleNodes = data[randomCountry]?.filter(node => node.traffic_price_ether <= avgPrice && node.traffic_price_ether <= parseFloat(balanceValue));
+        const countries = Object.keys(data)
+
+        // Pre-check: ensure at least one affordable node exists before looping
+        const hasAffordable = countries.some(c =>
+          data[c].some(node =>
+            node.traffic_price_ether <= avgPrice &&
+            node.traffic_price_ether <= balance
+          )
+        )
+        if (!hasAffordable) {
+          NotifiyError("No affordable nodes available", <BsEmojiDizzy />)
+          closeList()
+          return
+        }
+
+        let eligibleNodes: typeof data[string] = []
+        let randomCountry = ""
+        while (eligibleNodes.length === 0) {
+          const idx = Math.floor(countries.length * Math.random())
+          randomCountry = countries[idx]
+          eligibleNodes = data[randomCountry].filter(
+            node => node.traffic_price_ether <= avgPrice && node.traffic_price_ether <= balance
+          )
         }
         const randomIndex = Math.floor(Math.random() * eligibleNodes.length);
         const singleNodeData = nodeData.find(node => node.node_id === eligibleNodes[randomIndex].node_id)
@@ -67,15 +88,17 @@ function Home() {
     }
     else{
       if(!advancedView){
-        let oldvalue: {
-          node_id: number; 
-          traffic_price_ether: number 
-          country_iso: string   
-        }[] =[]
-        data[country].forEach((value)=>{
-          if(value.traffic_price_ether <= avgPrice && value.traffic_price_ether <= parseFloat(balanceValue))
-          oldvalue.push(value)
-        })
+        const oldvalue = data[country].filter(
+          value => value.traffic_price_ether <= avgPrice && value.traffic_price_ether <= balance
+        )
+
+        // Guard against empty list — prevents % 0 and undefined access
+        if (oldvalue.length === 0) {
+          NotifiyError("No affordable nodes in this country", <BsEmojiDizzy />)
+          closeList()
+          return
+        }
+
         let lastSelectedNodeIndex = await storage.getItem<number>('lastSelectedNodeIndex');
         if (lastSelectedNodeIndex === undefined || lastSelectedNodeIndex >= oldvalue.length || countryName!=country) {
           lastSelectedNodeIndex = 0;
@@ -147,50 +170,52 @@ function Home() {
     setAdvancedView(await storage.getItem("advancedView"))
   }
 
-  const balance = ()=>{
-    storage.watch({"balance":(key)=>{setBalanceValue(key.newValue)}})
-  }
-
-  const listenProxyStatus = ()=>{
-    storage.watch({"proxyStatus":(key)=>{setProxyStatus(key.newValue)}})
-  }
-
-  const listenConnectionInfo = ()=>{
-    storage.watch({"countryConnected":(key)=>{setcountryConnected(key.newValue)}})
-    storage.watch({"cityConnected":(key)=>{setcityConnected(key.newValue)}})
-    storage.watch({"ipConnected":(key)=>{setipConnected(key.newValue)}})
-  }
-
-  const listenNodeInfo = ()=>{
-    storage.watch({"selectedNodeData":(key)=>{
-      const selectedNodeData :NodeStorageData = key.newValue
-      setcountryName(selectedNodeData.country_name)
-      setcountry(selectedNodeData.country_iso)
-      setnodeId(selectedNodeData.node_id)
-      setnodePrice(selectedNodeData.traffic_price_ether)
-      setNodeDownload(selectedNodeData.download_speed)
-      setNodeUpload(selectedNodeData.upload_speed)
-    }})
-  }
-
-  const listenLocalInfo = ()=>{
-    storage.watch({"countryLocal":(key)=>{setcountryLocal(key.newValue)}})
-    storage.watch({"cityLocal":(key)=>{setcityLocal(key.newValue)}})
-    storage.watch({"ipLocal":(key)=>{setipLocal(key.newValue)}})
-  }
-
-  const listenSettings = ()=>{
-    storage.watch({"advancedView":(key)=>{setAdvancedView(key.newValue)}})
-  }
-
   useEffect(()=>{
     getData()
-    balance()
-    listenProxyStatus()
-    listenConnectionInfo()
-    listenLocalInfo()
-    listenSettings()
-    listenNodeInfo()
+
+    const balanceCb = {"balance":(key: any)=>{setBalanceValue(key.newValue)}}
+    const proxyCb = {"proxyStatus":(key: any)=>{setProxyStatus(key.newValue)}}
+    const connectionCb = {
+      "countryConnected":(key: any)=>{setcountryConnected(key.newValue)},
+      "cityConnected":(key: any)=>{setcityConnected(key.newValue)},
+      "ipConnected":(key: any)=>{setipConnected(key.newValue)},
+    }
+    const localCb = {
+      "countryLocal":(key: any)=>{setcountryLocal(key.newValue)},
+      "cityLocal":(key: any)=>{setcityLocal(key.newValue)},
+      "ipLocal":(key: any)=>{setipLocal(key.newValue)},
+    }
+    const settingsCb = {"advancedView":(key: any)=>{setAdvancedView(key.newValue)}}
+    const nodeCb = {"selectedNodeData":(key: any)=>{
+      const d: NodeStorageData = key.newValue
+      setcountryName(d.country_name)
+      setcountry(d.country_iso)
+      setnodeId(d.node_id)
+      setnodePrice(d.traffic_price_ether)
+      setNodeDownload(d.download_speed)
+      setNodeUpload(d.upload_speed)
+    }}
+    const authCb = {"authExpired":(key: any)=>{
+      if(key.newValue === true) navigate('/login')
+    }}
+
+    storage.watch(balanceCb)
+    storage.watch(proxyCb)
+    storage.watch(connectionCb)
+    storage.watch(localCb)
+    storage.watch(settingsCb)
+    storage.watch(nodeCb)
+    storage.watch(authCb)
+
+    return () => {
+      storage.unwatch(balanceCb)
+      storage.unwatch(proxyCb)
+      storage.unwatch(connectionCb)
+      storage.unwatch(localCb)
+      storage.unwatch(settingsCb)
+      storage.unwatch(nodeCb)
+      storage.unwatch(authCb)
+    }
   },[])
 
   const theme = useMantineTheme();
