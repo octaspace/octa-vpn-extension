@@ -3,13 +3,15 @@ import { secureStorage, storage } from "./storage";
 import type { ProxyConfig, ServiceInfo } from "@octaspace/sdk";
 import { NotifiyError } from "~components/notifiyerror";
 import { RiCoinFill, RiGlobalLine } from "react-icons/ri";
-import { OctaAuthenticationError, OctaClient, OctaError } from "@octaspace/sdk";
+import { OctaAuthenticationError, OctaClient, OctaError, OctaNotFoundError } from "@octaspace/sdk";
 import { BsEmojiDizzy } from "react-icons/bs";
 import { FaFaceSmile } from "react-icons/fa6";
 import { GiDominoMask } from "react-icons/gi";
 import { wait } from "./wait";
 
 export async function connect(nodeid:number) {
+    let octa: OctaClient | undefined
+    let uuid: string | undefined
     try{
         if(process.env.PLASMO_BROWSER=="firefox"){
             if(!(await browser.extension.isAllowedIncognitoAccess())){
@@ -24,7 +26,7 @@ export async function connect(nodeid:number) {
 
         // Validate balance BEFORE setting Connecting status
         const token:string = await secureStorage.getItem("token")
-        const octa = new OctaClient({ apiKey: token })
+        octa = new OctaClient({ apiKey: token })
         let balance = ((await octa.accounts.balance()).balance * 1e-18).toFixed(3)
         await storage.setItem("balance",balance)
         if(parseFloat(balance)<0.01){
@@ -35,7 +37,7 @@ export async function connect(nodeid:number) {
         // Balance OK — now show Connecting
         await storage.setItem("proxyStatus","Connecting")
 
-        let uuid:string = (await octa.services.vpn.start({node_id:nodeid,subkind:"http_proxy"})).uuid
+        uuid = (await octa.services.vpn.start({node_id:nodeid,subkind:"http_proxy"})).uuid
         await storage.setItem("uuid",uuid)
 
         // Guard: user may have triggered disconnect while createVPN was in-flight
@@ -45,11 +47,12 @@ export async function connect(nodeid:number) {
             return
         }
 
-        // Node needs time to provision the service — poll up to 7 tries, 2s apart
-        let data:ServiceInfo = await octa.services.session(uuid).info()
+        // Node needs time to provision the service — poll up to 7 tries, 2s apart.
+        // retries:0 keeps each try a single request instead of the SDK default of 3
+        let data:ServiceInfo = await octa.services.session(uuid).info({retries:0})
         for(let attempt=1; !data.is_ready && attempt<7; attempt++){
             await wait(2000)
-            data = await octa.services.session(uuid).info()
+            data = await octa.services.session(uuid).info({retries:0})
         }
         if(!data.is_ready){
             try { await octa.services.session(uuid).stop() } catch {}
@@ -81,10 +84,18 @@ export async function connect(nodeid:number) {
     catch(err:any)
     {
         await storage.setItem("proxyStatus","Disconnected")
+        // Session was created but connect failed — stop it server-side to avoid billing leak
+        if(octa && uuid){
+            try { await octa.services.session(uuid).stop() } catch {}
+        }
         if(err instanceof OctaAuthenticationError){
             await secureStorage.set("token", "")
             await storage.setItem("authExpired", true)
             NotifiyError('Session expired. Please sign in again.', <BsEmojiDizzy />)
+            return
+        }
+        if(err instanceof OctaNotFoundError){
+            NotifiyError('Node unavailable, try another', <BsEmojiDizzy />)
             return
         }
         if(err instanceof OctaError){
