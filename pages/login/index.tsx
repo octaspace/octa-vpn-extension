@@ -4,7 +4,7 @@ import logo from "data-base64:~assets/img/octa.png";
 import { Box, Button, Stack, Text, Title, useMantineTheme } from '@mantine/core';
 import { Image } from '@mantine/core';
 import { keyframes } from '@emotion/react';
-import { Octa } from "@octaspace/api.js";
+import { OctaClient } from "@octaspace/sdk";
 import { wait } from "~helpers/wait";
 import { FaCircleCheck } from "react-icons/fa6";
 import { useNavigate } from "react-router-dom";
@@ -39,8 +39,8 @@ function Login() {
   async function save(apikey:string) {
     try{
       await clearData()
-      let octa = new Octa(apikey)
-      await octa.getAccountInfo()
+      let octa = new OctaClient({ apiKey: apikey })
+      await octa.accounts.get()
       setIsLoading(false)
       setStatus(true)
       await wait(1000)

@@ -6,10 +6,10 @@ import { useEffect, useState } from "react";
 import { updateBalance } from "~helpers/balance";
 import { NotifiyError } from "~components/notifiyerror";
 import { RiGlobalLine } from "react-icons/ri";
-import type { vpnNodes } from "@octaspace/api.js/build/src/types";
+import type { VpnNode } from "@octaspace/sdk";
 import { secureStorage, storage } from "~helpers/storage";
 import { wait } from "~helpers/wait";
-import { ApiError, KeyError, Octa } from "@octaspace/api.js";
+import { OctaAuthenticationError, OctaClient, OctaError } from "@octaspace/sdk";
 import { BsEmojiDizzy } from "react-icons/bs";
 import { LocalInfo } from "~helpers/localinfo";
 
@@ -95,7 +95,8 @@ export function Load(){
       //fetch new data not before 1 hour
       if((Date.now()-timestamp)>3_600_000||nodeDataChunks==undefined||countryDataChunks==undefined||avgPrice==0.00){
         LocalInfo()
-        let data:vpnNodes[] = await new Octa(await secureStorage.getItem("token")).getVPNNodes()
+        const octa = new OctaClient({ apiKey: await secureStorage.getItem("token") })
+        let data:VpnNode[] = await octa.services.vpn.available()
         const avgTrafficPrice:number = parseFloat((data.reduce((sum, node) => sum + (node.traffic_price_ether), 0) / data.length).toFixed(2));
         await storage.setItem("avgPrice",avgTrafficPrice)
         // Clear stale chunks before saving fresh data
@@ -114,17 +115,17 @@ export function Load(){
         }));
         await saveCountryData(countryData)
         await saveNodeData(nodeData)
-        let balance = ((await new Octa(await secureStorage.getItem("token")).getAccountBalance()).balance * 1e-18).toFixed(3)
+        let balance = ((await octa.accounts.balance()).balance * 1e-18).toFixed(3)
         await storage.setItem("balance",balance)
       }
       await storage.setItem("last_interacted",Date.now())
     }
     catch(err:any)
     {
-      if(err instanceof KeyError){
+      if(err instanceof OctaAuthenticationError){
         await secureStorage.set("token", "")
         await storage.setItem("authExpired", true)
-      } else if(err instanceof ApiError){
+      } else if(err instanceof OctaError){
         NotifiyError('Network Error', <RiGlobalLine />)
       } else {
         console.error("loadNodes error:", err)
