@@ -90,19 +90,14 @@ export function Home({ onLocations, onSettings, toast }: Props) {
         </button>
       </header>
 
-      <main className="body">
-        <div
-          style={{
-            height: 196,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0
-          }}>
+      {/* One rhythm: the globe takes the free height, the blocks below keep
+          16 px between groups and 12 px inside them, in every state. */}
+      <main className="body home">
+        <div className="globe-area">
           <Globe you={geo} exit={connected ? session : node} />
         </div>
 
-        <div className="pad" style={{ paddingTop: 0 }}>
+        <div className="stack">
           {/* the route: the same dots as on the globe, you to the exit */}
           <div className="card route">
             <div className="stop">
@@ -173,24 +168,29 @@ export function Home({ onLocations, onSettings, toast }: Props) {
             ? "Disconnecting…"
             : "Not connected"}
         </span>
-        {connected && session && (
-          <div className="stats">
-            <span>
-              <span className="label">Time</span>
-              <span className="value">
-                {duration(now - session.started_at)}
-              </span>
+        {/* always three values, so connecting does not move the layout */}
+        <div className="stats">
+          {(connected && session
+            ? [
+                ["Time", duration(now - session.started_at)],
+                ["Traffic", bytes(session.rx + session.tx)],
+                ["Spent", spent(session.charged)]
+              ]
+            : [
+                ["Price", node ? perGb(node.price) : "—"],
+                ["Balance", balance == null ? "…" : usd(balance)],
+                [
+                  "Covers",
+                  node && balance != null ? covers(balance, node.price) : "—"
+                ]
+              ]
+          ).map(([label, value]) => (
+            <span key={label}>
+              <span className="label">{label}</span>
+              <span className="value">{value}</span>
             </span>
-            <span>
-              <span className="label">Traffic</span>
-              <span className="value">{bytes(session.rx + session.tx)}</span>
-            </span>
-            <span>
-              <span className="label">Spent</span>
-              <span className="value">{spent(session.charged)}</span>
-            </span>
-          </div>
-        )}
+          ))}
+        </div>
         {!connected && !busy && lastError && lastError !== "cancelled" && (
           <span
             className="error"
@@ -211,6 +211,15 @@ export function Home({ onLocations, onSettings, toast }: Props) {
       </footer>
     </>
   )
+}
+
+/** How much traffic the balance pays for at this price. */
+const covers = (balance: number, price: number) => {
+  if (balance <= 0 || price <= 0) return "—"
+  const gb = balance / price
+  return gb >= 1000
+    ? `≈ ${(gb / 1000).toFixed(gb >= 10000 ? 0 : 1)} TB`
+    : `≈ ${Math.floor(gb)} GB`
 }
 
 /** "Beauharnois, Canada": the city when known, the country always. */

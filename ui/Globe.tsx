@@ -111,8 +111,7 @@ export function Globe({
 
   return (
     <svg
-      width="188"
-      height="188"
+      className="globe"
       viewBox={`0 0 ${SIZE} ${SIZE}`}
       fill="none"
       aria-hidden="true">
