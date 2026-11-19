@@ -501,3 +501,113 @@ button.row:hover {
 .row .title.mono {
   font-size: 13px;
 }
+
+/* ---- home: the route card, pills, session stats ---- */
+.route {
+  position: relative;
+  padding: 4px 0;
+}
+.route::before {
+  /* the dashed line between the two dots, as the route on the globe */
+  content: "";
+  position: absolute;
+  left: 16.5px;
+  top: 34px;
+  height: 60px;
+  border-left: 1px dashed var(--selected);
+  opacity: 0.6;
+}
+.stop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  padding: 0 12px;
+  width: 100%;
+  border: 0;
+  background: none;
+  text-align: left;
+}
+button.stop {
+  border-radius: 0 0 8px 8px;
+  transition: background-color 150ms;
+}
+button.stop:hover {
+  background: var(--hover);
+}
+.stop .grow {
+  flex-grow: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.stop .title {
+  font-size: 14px;
+  line-height: 20px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stop .sub {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--muted);
+}
+.stop .end {
+  flex-shrink: 0;
+}
+.dot {
+  position: relative;
+  z-index: 1;
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px var(--surface);
+}
+.dot.you {
+  background: var(--marker);
+}
+.dot.exit {
+  background: var(--selected);
+}
+
+.pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.pill {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  transition:
+    background-color 150ms,
+    color 150ms;
+}
+.pill:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.stats > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.stats .value {
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--text);
+}

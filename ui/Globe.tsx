@@ -18,6 +18,8 @@ import world from "world-atlas/countries-110m.json"
 type Point = { lat: number | null; lon: number | null }
 type LonLat = [number, number]
 
+// before the popup has any place to show
+const DEFAULT_CENTRE: LonLat = [15, 30]
 const SIZE = 200
 const R = 94
 
@@ -39,7 +41,7 @@ function centreOf(a?: Point | null, b?: Point | null): LonLat {
     return geoInterpolate(lonLat(a), lonLat(b))(0.5) as LonLat
   if (has(a)) return lonLat(a)
   if (has(b)) return lonLat(b)
-  return [15, 30]
+  return DEFAULT_CENTRE
 }
 
 const countryAt = (p?: Point | null) =>
@@ -52,7 +54,13 @@ function useTurn(target: LonLat): LonLat {
   useEffect(() => {
     const start = from.current
     if (start[0] === target[0] && start[1] === target[1]) return
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    // the first place after the popup's data loads, a hidden page, reduced
+    // motion: there at once; only a change of location turns the globe
+    if (
+      start === DEFAULT_CENTRE ||
+      document.hidden ||
+      matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
       from.current = target
       return setCentre(target)
     }

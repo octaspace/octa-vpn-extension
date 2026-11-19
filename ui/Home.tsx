@@ -2,7 +2,6 @@ import { useEffect, useState } from "react"
 
 import { bytes, duration, mbps, perGb, spent, usd } from "~helpers/format"
 import { send } from "~helpers/messages"
-import type { Selection, VpnNode } from "~helpers/model"
 import { resolveSelection } from "~helpers/nodes"
 
 import { Globe } from "./Globe"
@@ -104,100 +103,94 @@ export function Home({ onLocations, onSettings, toast }: Props) {
         </div>
 
         <div className="pad" style={{ paddingTop: 0 }}>
-          <div
-            className="card card-pad"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "4px 12px"
-            }}>
-            <span className="label">
-              {connected ? "You" : "Sites see you in"}
-            </span>
-            <span className="label">{connected ? "Exit" : ""}</span>
-            <span>
-              {geo
-                ? [geo.city, geo.country_iso].filter(Boolean).join(", ") ||
-                  geo.country
-                : "…"}
-            </span>
-            <span>
-              {connected && session
-                ? [session.city, session.country_iso].filter(Boolean).join(", ")
-                : ""}
-            </span>
-            <span className="mono muted">
-              {connected ? "hidden" : geo?.ip ?? ""}
-            </span>
-            <span className="mono muted">{connected ? session?.ip : ""}</span>
-          </div>
-
-          <div className="card">
-            <button className="row" onClick={onLocations}>
-              <span className="iso">
-                {(connected ? session?.country_iso : node?.country_iso) || "—"}
-              </span>
+          {/* the route: the same dots as on the globe, you to the exit */}
+          <div className="card route">
+            <div className="stop">
+              <span className="dot you" />
               <span className="grow">
-                <span className="title">{location}</span>
-                <span className="sub">
-                  {node
-                    ? nodeLine(node, selection.kind)
+                <span className="label">
+                  {connected ? "You" : "You are in"}
+                </span>
+                <span className="title">{place(geo)}</span>
+              </span>
+              <span className="mono muted end">
+                {connected ? "hidden" : geo?.ip ?? ""}
+              </span>
+            </div>
+            <button className="stop" onClick={onLocations}>
+              <span className="dot exit" />
+              <span className="grow">
+                <span className="label">Exit · {location}</span>
+                <span className="title">
+                  {connected && session
+                    ? place(session)
+                    : node
+                    ? place(node)
                     : "Choose where to exit"}
                 </span>
+                {node && (
+                  <span className="sub">
+                    {mbps(node.down)} · {perGb(node.price)}
+                  </span>
+                )}
               </span>
+              <span className="mono end">{connected ? session?.ip : ""}</span>
               <ChevronIcon size={16} />
             </button>
-            <button className="row" onClick={onSettings}>
-              <span className="grow">
-                <span className="title">Sites and spending</span>
-                <span className="sub">
-                  {sitesLabel(settings.bypassSites.length)} ·{" "}
-                  {settings.spendLimit
-                    ? `limit ${usd(settings.spendLimit)}`
-                    : "no limit"}
-                </span>
-              </span>
-              <ChevronIcon size={16} />
+          </div>
+
+          <div className="pills">
+            <button className="pill" onClick={onSettings}>
+              {sitesLabel(settings.bypassSites.length)}
+            </button>
+            <button className="pill" onClick={onSettings}>
+              {settings.spendLimit
+                ? `Limit ${usd(settings.spendLimit)}`
+                : "No spending limit"}
             </button>
           </div>
         </div>
       </main>
 
       <footer className="pad">
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 8
-          }}>
-          <span
-            role="status"
-            className={`status ${
-              connected ? "connected" : busy ? "busy" : "idle"
-            }`}>
-            {connected ? (
-              <CheckIcon size={16} />
-            ) : busy ? (
-              <span className="spinner" />
-            ) : (
-              <RingIcon size={16} />
-            )}
-            {connected
-              ? "Connected"
-              : status === "Connecting"
-              ? "Connecting…"
-              : busy
-              ? "Disconnecting…"
-              : "Not connected"}
-          </span>
-          {connected && session && (
-            <span className="mono muted">
-              {duration(now - session.started_at)} ·{" "}
-              {bytes(session.rx + session.tx)} · {spent(session.charged)}
-            </span>
+        <span
+          role="status"
+          className={`status ${
+            connected ? "connected" : busy ? "busy" : "idle"
+          }`}>
+          {connected ? (
+            <CheckIcon size={16} />
+          ) : busy ? (
+            <span className="spinner" />
+          ) : (
+            <RingIcon size={16} />
           )}
-        </div>
+          {connected
+            ? "Connected"
+            : status === "Connecting"
+            ? "Connecting…"
+            : busy
+            ? "Disconnecting…"
+            : "Not connected"}
+        </span>
+        {connected && session && (
+          <div className="stats">
+            <span>
+              <span className="label">Time</span>
+              <span className="value">
+                {duration(now - session.started_at)}
+              </span>
+            </span>
+            <span>
+              <span className="label">Traffic</span>
+              <span className="value">{bytes(session.rx + session.tx)}</span>
+            </span>
+            <span>
+              <span className="label">Spent</span>
+              <span className="value">{spent(session.charged)}</span>
+            </span>
+          </div>
+        )}
         {!connected && !busy && lastError && lastError !== "cancelled" && (
           <span
             className="error"
@@ -220,18 +213,16 @@ export function Home({ onLocations, onSettings, toast }: Props) {
   )
 }
 
+/** "Beauharnois, Canada": the city when known, the country always. */
+const place = (p?: { city?: string; country?: string } | null) =>
+  p ? [p.city, p.country].filter(Boolean).join(", ") || "Unknown" : "…"
+
 const sitesLabel = (n: number) =>
   n === 0
     ? "All sites via VPN"
     : n === 1
     ? "1 site direct"
     : `${n} sites direct`
-
-/** The country under "Best", the city under a chosen country. */
-const nodeLine = (node: VpnNode, kind: Selection["kind"]) =>
-  `${kind === "country" ? node.city || node.country : node.country} · ${mbps(
-    node.down
-  )} · ${perGb(node.price)}`
 
 /** The clock for the session timer: ticks only while it is shown. */
 function useNow(active: boolean) {
