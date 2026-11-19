@@ -11,7 +11,7 @@ describe("verifyKey", () => {
     const fetch = vi.fn()
     vi.stubGlobal("fetch", fetch)
     await expect(verifyKey("a".repeat(64))).rejects.toMatchObject({
-      code: "invalid_key"
+      code: "auth_failed"
     })
     expect(fetch).not.toHaveBeenCalled()
   })
@@ -21,7 +21,7 @@ describe("verifyKey", () => {
       "fetch",
       vi.fn(async () => new Response("", { status: 401 }))
     )
-    await expect(verifyKey(KEY)).rejects.toMatchObject({ code: "invalid_key" })
+    await expect(verifyKey(KEY)).rejects.toMatchObject({ code: "auth_failed" })
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => new Response("", { status: 503 }))

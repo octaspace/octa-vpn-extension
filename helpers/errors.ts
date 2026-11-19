@@ -11,7 +11,6 @@ export type ErrorCode =
   | "auth_failed"
   | "cancelled"
   | "incognito_required"
-  | "invalid_key"
   | "low_balance"
   | "network"
   | "no_node"
@@ -49,8 +48,6 @@ export const ERROR_TEXT: Record<ErrorCode, string> = {
   cancelled: "Cancelled.",
   incognito_required:
     "Allow the extension to run in private windows: Firefox requires it to set a proxy.",
-  invalid_key:
-    "This API key is not valid. Create one in the console under Credentials.",
   low_balance: "Not enough balance for this node. Top up in the console.",
   network: "Network error. Check your connection and try again.",
   no_node: "No affordable node for this location.",

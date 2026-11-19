@@ -6,7 +6,6 @@ export const IS_FIREFOX = process.env.PLASMO_BROWSER === "firefox"
 // the API key of this app.
 export const API_HOST = "https://api.octa.space"
 export const OAUTH_HOST = "https://console.octa.space"
-export const CONSOLE_API_KEYS_URL = `${OAUTH_HOST}/account/credentials`
 // The OAuth applications must exist on the console with `issues_api_keys`, for
 // the redirect URIs https://meklldccaengbfnlbbbgadiijkgcfhbk.chromiumapp.org/
 // (Chrome) and https://9d8617723c445f3686b2f57bbf9587fa1e6b0ea3.extensions.allizom.org/

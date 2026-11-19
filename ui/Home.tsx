@@ -149,13 +149,12 @@ export function Home({ onLocations, onSettings, toast }: Props) {
             </button>
             <button className="row" onClick={onSettings}>
               <span className="grow">
-                <span className="title">
-                  {sitesLabel(settings.bypassSites.length)}
-                </span>
+                <span className="title">Sites and spending</span>
                 <span className="sub">
+                  {sitesLabel(settings.bypassSites.length)} ·{" "}
                   {settings.spendLimit
-                    ? `Limit ${usd(settings.spendLimit)} per session`
-                    : "No spending limit"}
+                    ? `limit ${usd(settings.spendLimit)}`
+                    : "no limit"}
                 </span>
               </span>
               <ChevronIcon size={16} />
@@ -164,7 +163,7 @@ export function Home({ onLocations, onSettings, toast }: Props) {
         </div>
       </main>
 
-      <footer className="pad" style={{ borderTop: "1px solid var(--border)" }}>
+      <footer className="pad">
         <div
           style={{
             display: "flex",
@@ -223,10 +222,10 @@ export function Home({ onLocations, onSettings, toast }: Props) {
 
 const sitesLabel = (n: number) =>
   n === 0
-    ? "All sites through the VPN"
+    ? "All sites via VPN"
     : n === 1
-    ? "1 site skips the VPN"
-    : `${n} sites skip the VPN`
+    ? "1 site direct"
+    : `${n} sites direct`
 
 /** The country under "Best", the city under a chosen country. */
 const nodeLine = (node: VpnNode, kind: Selection["kind"]) =>

@@ -9,7 +9,6 @@ export type Request =
   | { type: "disconnect" }
   | { type: "refresh" }
   | { type: "login" }
-  | { type: "loginWithKey"; key: string }
   | { type: "signOut" }
 
 export type Response = { ok: boolean; error?: ErrorCode }

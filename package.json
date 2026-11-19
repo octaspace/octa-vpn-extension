@@ -8,22 +8,27 @@
     "dev": "plasmo dev --verbose",
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit && vitest run && plasmo build",
-    "firefox": "tsc --noEmit && vitest run && plasmo build --target=firefox-mv2 --hoist --zip",
+    "firefox": "tsc --noEmit && vitest run && plasmo build --target=firefox-mv2 --hoist && node scripts/firefox-manifest.mjs && plasmo package --target=firefox-mv2",
     "test": "vitest run"
   },
   "dependencies": {
     "@octaspace/sdk": "file:vendor/octaspace-sdk-next-7906ca2.tgz",
     "@plasmohq/storage": "1.8.0",
+    "d3-geo": "^3.1.1",
     "plasmo": "^0.90.5",
     "react": "18.2.0",
-    "react-dom": "18.2.0"
+    "react-dom": "18.2.0",
+    "topojson-client": "^3.1.0",
+    "world-atlas": "^2.0.2"
   },
   "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "4.1.0",
     "@types/chrome": "0.0.243",
+    "@types/d3-geo": "^3.1.0",
     "@types/node": "20.5.0",
     "@types/react": "18.2.20",
     "@types/react-dom": "18.2.7",
+    "@types/topojson-client": "^3.1.5",
     "prettier": "3.0.2",
     "typescript": "5.8.3",
     "vitest": "^3.2.4"
@@ -41,11 +46,12 @@
       "storage",
       "alarms",
       "privacy",
-      "notifications"
+      "notifications",
+      "webRequest",
+      "webRequestAuthProvider"
     ],
     "host_permissions": [
-      "https://api.octa.space/*",
-      "https://console.octa.space/*"
+      "<all_urls>"
     ],
     "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwJ9ASVnZJqzZQzGui/HMHhv7AIZPkvYLOYn258TQUWyOr/VJxJoJOH0oVzGeZQqQSQWj8ItuXJ/nHg5FCrQPq41YvfL3PpUbQlbMkudU3dLH8gCMrIpmbsHD5kYQnGLBiP9FULuM/A2MMHelYX3zJJ2g1sgw8bMp+NNVQGJhQNUyqf42OjyJvTJiu2WdCyvg7SA7WTmHSsNgNXreCxM4nZmbvmWAmfOJJxIJn+D/sgjn9sZdLlqUI25B3aEL6uIai6+PQ8qvk6aQonCSSiadO21pOePbqiXea6albBDoSBpIj/hryYiKV0GkFAiQjScozohvW2mehnt0lAm/YfaBkwIDAQAB"
   }

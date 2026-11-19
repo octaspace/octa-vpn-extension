@@ -179,8 +179,7 @@ export function Settings({ onBack, onSignedOut }: Props) {
         style={{
           flexDirection: "row",
           justifyContent: "space-between",
-          alignItems: "center",
-          borderTop: "1px solid var(--border)"
+          alignItems: "center"
         }}>
         <span className="mono muted">
           v{chrome.runtime.getManifest().version}

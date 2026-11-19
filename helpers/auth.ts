@@ -71,7 +71,7 @@ async function issueApiKey(accessToken: string): Promise<string> {
 
 /** Whether the public API takes the key: 401 is a bad key, else the network. */
 export async function verifyKey(key: string): Promise<void> {
-  if (!API_KEY_PATTERN.test(key)) throw new AppError("invalid_key")
+  if (!API_KEY_PATTERN.test(key)) throw new AppError("auth_failed")
   let res: Response
   try {
     res = await fetch(`${API_HOST}/accounts/balance`, {
@@ -80,7 +80,7 @@ export async function verifyKey(key: string): Promise<void> {
   } catch {
     throw new AppError("network")
   }
-  if (res.status === 401) throw new AppError("invalid_key")
+  if (res.status === 401) throw new AppError("auth_failed")
   if (!res.ok) throw new AppError("network")
 }
 
@@ -88,11 +88,6 @@ async function signIn(key: string): Promise<void> {
   await verifyKey(key)
   await clearData()
   await setToken(key)
-}
-
-/** Signs in with a key made by hand in the console (Credentials). */
-export function loginWithKey(key: string): Promise<void> {
-  return signIn(key.trim())
 }
 
 /** Signs the user in; resolves once the API key is stored. */
