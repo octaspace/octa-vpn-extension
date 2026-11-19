@@ -22,7 +22,12 @@ import {
 } from "./model"
 import { createApi, type Api } from "./octa"
 import { ext, toolbarAction } from "./platform"
-import { applyProxy, clearProxy, readProxyControl } from "./proxy"
+import {
+  applyProxy,
+  clearProxy,
+  readProxyControl,
+  type ProxyEndpoint
+} from "./proxy"
 import { getToken, KEYS, storage } from "./storage"
 
 export type ProxyStatus =
@@ -34,6 +39,22 @@ export type ProxyStatus =
 export type Result = { ok: boolean; error?: ErrorCode }
 
 let starting: AbortController | null = null
+
+// The proxy's login for this session: in memory only, never in storage. A
+// worker that restarts asks the API for it again (`proxyLogin`).
+type Login = { host: string; username: string; password: string }
+let login: Login | null = null
+
+function keepLogin(endpoint: ProxyEndpoint) {
+  login =
+    endpoint.username && endpoint.password !== undefined
+      ? {
+          host: endpoint.host,
+          username: endpoint.username,
+          password: endpoint.password
+        }
+      : null
+}
 let queue: Promise<unknown> = Promise.resolve()
 
 /** Runs connect/disconnect one at a time. */
@@ -158,6 +179,7 @@ async function teardown(error?: ErrorCode): Promise<void> {
     await setStatus("Disconnecting")
   }
   await clearProxy()
+  login = null
   // nothing to stop on a fresh install or after sign-out: no API call, no key needed
   if ((await openSessions()).length > 0) {
     try {
@@ -210,6 +232,7 @@ async function startSession(
   try {
     const settings =
       (await storage.get<Settings>(KEYS.settings)) ?? DEFAULT_SETTINGS
+    keepLogin(info.endpoint)
     await applyProxy(info.endpoint, settings.bypassSites)
   } catch (err) {
     throw err instanceof AppError ? err : new AppError("proxy_failed")
@@ -342,4 +365,24 @@ async function stopBecause(code: ErrorCode): Promise<void> {
 /** Below $0.25, or below 10% of the balance at the start, whichever is higher. */
 export function isLow(balance: number, startBalance: number): boolean {
   return balance < Math.max(LOW_BALANCE_USD, startBalance * 0.1)
+}
+
+/**
+ * The login the node's proxy asks for (407), when the session up has one:
+ * from memory, or from the API after the worker restarted.
+ */
+export async function proxyLogin(challenger: string): Promise<Login | null> {
+  if (
+    !login &&
+    (await storage.get<ProxyStatus>(KEYS.proxyStatus)) === "Connected"
+  ) {
+    const uuid = await storage.get<string>(KEYS.uuid)
+    try {
+      const info = uuid ? await (await api()).info(uuid) : null
+      if (info?.endpoint) keepLogin(info.endpoint)
+    } catch (err) {
+      console.warn("Proxy login unavailable:", toErrorCode(err))
+    }
+  }
+  return login && login.host === challenger ? login : null
 }

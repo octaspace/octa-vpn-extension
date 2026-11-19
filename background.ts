@@ -1,10 +1,10 @@
-import { login, loginWithKey } from "~helpers/auth"
+import { login } from "~helpers/auth"
 import { WATCHDOG_ALARM } from "~helpers/config"
 import { toErrorCode } from "~helpers/errors"
 import type { Request, Response } from "~helpers/messages"
 import { ext } from "~helpers/platform"
-import { onProxyError } from "~helpers/proxy"
-import { check, connect, disconnect } from "~helpers/session"
+import { onProxyAuth, onProxyError } from "~helpers/proxy"
+import { check, connect, disconnect, proxyLogin } from "~helpers/session"
 import { clearData } from "~helpers/storage"
 
 async function attempt(task: () => Promise<void>): Promise<Response> {
@@ -28,8 +28,6 @@ async function handle(request: Request): Promise<Response> {
       return { ok: true }
     case "login":
       return attempt(login)
-    case "loginWithKey":
-      return attempt(() => loginWithKey(request.key))
     case "signOut":
       // stop the session while the key is still there
       await disconnect()
@@ -50,6 +48,10 @@ ext.alarms.onAlarm.addListener((alarm) => {
 
 // A dead node shows up as proxy errors first: check now, not at the next tick.
 let pending: ReturnType<typeof setTimeout> | undefined
+// The node's proxy asks for the session's login: listeners must be added at
+// the worker's start, before the event that wakes it is dispatched.
+onProxyAuth(proxyLogin)
+
 onProxyError(() => {
   clearTimeout(pending)
   pending = setTimeout(check, 3_000)

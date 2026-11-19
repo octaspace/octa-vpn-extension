@@ -1,24 +1,50 @@
 import { IS_FIREFOX, PROXY_BYPASS } from "./config"
 import { AppError } from "./errors"
-import { ext } from "./platform"
+import { ext, type AuthDetails, type AuthResponse } from "./platform"
 
-export type ProxyEndpoint = { host: string; port: number }
+/** Where the node's proxy listens, and the login of this session. */
+export type ProxyEndpoint = {
+  host: string
+  port: number
+  username?: string
+  password?: string
+}
 
 /**
- * The session's `config` for `http_proxy`: `host:port` or `http://host:port`
- * (a string, as the API documents it), or `{ip, port}` as the node reports it.
- * Anything else is no endpoint.
+ * The session's `config` for `http_proxy`, in any of the shapes the core may
+ * send: `{ip|host, port, username, password}`, the same as a JSON string, or
+ * `http://user:pass@host:port` / `host:port`. Anything else is no endpoint.
+ * It carries a password: never log it.
  */
 export function parseProxyConfig(config: unknown): ProxyEndpoint | null {
+  if (typeof config === "string" && config.trim().startsWith("{")) {
+    try {
+      return parseProxyConfig(JSON.parse(config))
+    } catch {
+      return null
+    }
+  }
   let host: unknown
   let port: unknown
+  let username: unknown
+  let password: unknown
   if (config && typeof config === "object") {
-    ;({ ip: host, port } = config as { ip?: unknown; port?: unknown })
+    const c = config as Record<string, unknown>
+    host = c.ip ?? c.host
+    port = c.port
+    username = c.username ?? c.user ?? c.login
+    password = c.password ?? c.pass
   } else if (typeof config === "string") {
-    const m = /^(?:https?:\/\/)?(\[[0-9a-f:]+\]|[^\s:/]+):(\d{1,5})\/?$/i.exec(
-      config.trim()
-    )
-    if (m) [, host, port] = m
+    const m =
+      /^(?:https?:\/\/)?(?:([^:@\s/]+):([^@\s/]*)@)?(\[[0-9a-f:]+\]|[^\s:/@]+):(\d{1,5})\/?$/i.exec(
+        config.trim()
+      )
+    if (m) {
+      username = m[1] && decodeURIComponent(m[1])
+      password = m[2] && decodeURIComponent(m[2])
+      host = m[3]
+      port = m[4]
+    }
   }
   const p = Number(port)
   if (
@@ -27,9 +53,22 @@ export function parseProxyConfig(config: unknown): ProxyEndpoint | null {
     !Number.isInteger(p) ||
     p < 1 ||
     p > 65535
-  )
+  ) {
     return null
-  return { host: host.replace(/^\[|\]$/g, ""), port: p }
+  }
+  const endpoint: ProxyEndpoint = {
+    host: host.replace(/^\[|\]$/g, ""),
+    port: p
+  }
+  if (
+    typeof username === "string" &&
+    username &&
+    typeof password === "string"
+  ) {
+    endpoint.username = username
+    endpoint.password = password
+  }
+  return endpoint
 }
 
 /** Who controls the browser's proxy: us (on or off), or someone else. */
@@ -158,4 +197,45 @@ export function onProxyError(cb: () => void): void {
     if (d.fatal) cb()
   })
   ext.proxy.onError?.addListener(() => cb())
+}
+
+/**
+ * Answers the node's 407 with the session's login. A request asked twice got
+ * a wrong login: it is cancelled rather than asked about forever.
+ */
+export function onProxyAuth(
+  loginFor: (
+    challenger: string
+  ) => Promise<{ username: string; password: string } | null>
+): void {
+  const asked = new Set<string>()
+  const answer = async (d: AuthDetails): Promise<AuthResponse> => {
+    if (!d.isProxy || !d.challenger) return {}
+    if (asked.has(d.requestId)) return { cancel: true }
+    asked.add(d.requestId)
+    setTimeout(() => asked.delete(d.requestId), 60_000)
+    const login = await loginFor(d.challenger.host)
+    return login
+      ? {
+          authCredentials: {
+            username: login.username,
+            password: login.password
+          }
+        }
+      : {}
+  }
+  const filter = { urls: ["<all_urls>"] }
+  if (IS_FIREFOX) {
+    // Firefox: a blocking listener may return a promise
+    ext.webRequest?.onAuthRequired.addListener((d) => answer(d), filter, [
+      "blocking"
+    ])
+  } else {
+    // Chrome MV3: the answer goes to a callback (webRequestAuthProvider)
+    ext.webRequest?.onAuthRequired.addListener(
+      (d, callback) => void answer(d).then(callback),
+      filter,
+      ["asyncBlocking"]
+    )
+  }
 }

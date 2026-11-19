@@ -10,6 +10,16 @@ type Setting<T> = {
 
 type Listener<T> = { addListener(cb: (arg: T) => void): void }
 
+export type AuthDetails = {
+  requestId: string
+  isProxy: boolean
+  challenger?: { host: string; port: number }
+}
+export type AuthResponse = {
+  authCredentials?: { username: string; password: string }
+  cancel?: boolean
+}
+
 export interface ExtensionApi {
   proxy: {
     settings: Setting<Record<string, any>>
@@ -30,6 +40,18 @@ export interface ExtensionApi {
   runtime: typeof chrome.runtime
   alarms: typeof chrome.alarms
   action?: typeof chrome.action
+  webRequest?: {
+    onAuthRequired: {
+      addListener(
+        cb: (
+          details: AuthDetails,
+          callback?: (r: AuthResponse) => void
+        ) => AuthResponse | Promise<AuthResponse> | void,
+        filter: { urls: string[] },
+        extra: string[]
+      ): void
+    }
+  }
   notifications?: { create(options: object): Promise<string> | void }
   browserAction?: typeof chrome.action
 }

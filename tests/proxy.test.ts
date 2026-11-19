@@ -117,3 +117,42 @@ describe("sites that skip the VPN", () => {
     ).toContain("*.bank.example")
   })
 })
+
+describe("proxy login", () => {
+  it("takes the login from an object, JSON or a URL", async () => {
+    const { parseProxyConfig } = await import("~helpers/proxy")
+    const want = {
+      host: "203.0.113.7",
+      port: 3128,
+      username: "u1",
+      password: "p@ss"
+    }
+    expect(
+      parseProxyConfig({
+        ip: "203.0.113.7",
+        port: 3128,
+        username: "u1",
+        password: "p@ss"
+      })
+    ).toEqual(want)
+    expect(
+      parseProxyConfig(
+        JSON.stringify({
+          host: "203.0.113.7",
+          port: "3128",
+          user: "u1",
+          pass: "p@ss"
+        })
+      )
+    ).toEqual(want)
+    expect(parseProxyConfig("http://u1:p%40ss@203.0.113.7:3128")).toEqual(want)
+  })
+
+  it("no login is an IP-locked proxy", async () => {
+    const { parseProxyConfig } = await import("~helpers/proxy")
+    expect(parseProxyConfig({ ip: "203.0.113.7", port: 3128 })).toEqual({
+      host: "203.0.113.7",
+      port: 3128
+    })
+  })
+})

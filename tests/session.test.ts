@@ -246,3 +246,29 @@ describe("isLow", () => {
     expect(isLow(4, 50)).toBe(true)
   })
 })
+
+describe("proxy login", () => {
+  it("is kept in memory for the node that asks, and dropped on disconnect", async () => {
+    const { proxyLogin } = await import("~helpers/session")
+    api.info.mockResolvedValue({
+      ...EMPTY,
+      ready: true,
+      endpoint: {
+        host: "203.0.113.7",
+        port: 3128,
+        username: "u1",
+        password: "secret"
+      }
+    } as any)
+    await connect("7KQ4-M2XD-4")
+    expect(await proxyLogin("203.0.113.7")).toMatchObject({
+      username: "u1",
+      password: "secret"
+    })
+    expect(await proxyLogin("198.51.100.1")).toBeNull()
+    expect(JSON.stringify([...store.values()])).not.toContain("secret")
+    await disconnect()
+    expect(await proxyLogin("203.0.113.7")).toBeNull()
+    api.info.mockReset()
+  })
+})
