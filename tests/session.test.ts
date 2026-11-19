@@ -2,6 +2,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 // In-memory stand-ins for the browser and the API.
 const store = new Map<string, unknown>()
+const EMPTY = {
+  ready: false,
+  endpoint: null,
+  ip: "",
+  city: "",
+  country: "",
+  country_iso: "",
+  started_at: 0,
+  rx: 0,
+  tx: 0,
+  charged: 0
+}
 const proxy = { on: false }
 const api = {
   balance: vi.fn(async () => 1),
@@ -11,15 +23,22 @@ const api = {
     endpoint: { host: "203.0.113.7", port: 3128 },
     ip: "203.0.113.7",
     city: "Berlin",
-    country: "Germany"
+    country: "Germany",
+    country_iso: "DE",
+    started_at: 0,
+    rx: 0,
+    tx: 0,
+    charged: 0
   })),
   stop: vi.fn(async () => {})
 }
 
-vi.mock("~helpers/storage", () => ({
+vi.mock("~helpers/storage", async (importOriginal) => ({
+  KEYS: ((await importOriginal()) as { KEYS: object }).KEYS,
   storage: {
     get: async (k: string) => store.get(k),
-    set: async (k: string, v: unknown) => void store.set(k, v)
+    set: async (k: string, v: unknown) => void store.set(k, v),
+    remove: async (k: string) => void store.delete(k)
   },
   getToken: async () => "token"
 }))
@@ -54,6 +73,10 @@ describe("session", () => {
     expect(proxy.on).toBe(true)
     expect(store.get("proxyStatus")).toBe("Connected")
     expect(store.get("openSessions")).toEqual(["uuid-1"])
+    expect(store.get("session")).toMatchObject({
+      node_number: "7KQ4-M2XD-4",
+      ip: "203.0.113.7"
+    })
   })
 
   it("refuses a low balance before starting anything", async () => {
@@ -67,13 +90,7 @@ describe("session", () => {
   })
 
   it("a node that never gets ready: the session is stopped, not left billing", async () => {
-    api.info.mockResolvedValueOnce({
-      ready: true,
-      endpoint: null,
-      ip: "",
-      city: "",
-      country: ""
-    })
+    api.info.mockResolvedValueOnce({ ...EMPTY, ready: true })
     expect(await connect("7KQ4-M2XD-4")).toEqual({
       ok: false,
       error: "node_unavailable"
@@ -88,14 +105,7 @@ describe("session", () => {
     api.info.mockImplementationOnce(
       () =>
         new Promise((resolve) => {
-          release = () =>
-            resolve({
-              ready: false,
-              endpoint: null,
-              ip: "",
-              city: "",
-              country: ""
-            })
+          release = () => resolve({ ...EMPTY, ready: false })
         })
     )
     const pending = connect("7KQ4-M2XD-4")

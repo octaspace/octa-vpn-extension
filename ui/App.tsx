@@ -1,0 +1,108 @@
+import { OctaAuthenticationError } from "@octaspace/sdk"
+import { useCallback, useEffect, useState } from "react"
+
+import { refreshData } from "~helpers/data"
+import { clearData, tokenExists } from "~helpers/storage"
+
+import { Home } from "./Home"
+import { AlertIcon } from "./icons"
+import { Locations } from "./Locations"
+import { Login } from "./Login"
+import { Settings } from "./Settings"
+import { ERROR_TEXT, useAuthExpired, useSettings } from "./state"
+
+type Screen = "loading" | "login" | "home" | "locations" | "settings"
+
+export function App() {
+  const [screen, setScreen] = useState<Screen>("loading")
+  const [toastText, setToastText] = useState("")
+  const authExpired = useAuthExpired()
+  const [settings] = useSettings()
+
+  const toast = useCallback((text: string) => {
+    setToastText(text)
+    setTimeout(() => setToastText(""), 5000)
+  }, [])
+
+  const signedOut = useCallback(
+    async (expired: boolean) => {
+      await clearData()
+      setScreen("login")
+      if (expired) toast(ERROR_TEXT.auth_expired)
+    },
+    [toast]
+  )
+
+  // The data the screens show: fresh on every open of the popup.
+  const load = useCallback(async () => {
+    try {
+      await refreshData()
+    } catch (err) {
+      if (err instanceof OctaAuthenticationError) signedOut(true)
+      else toast(ERROR_TEXT.network)
+    }
+  }, [signedOut, toast])
+
+  useEffect(() => {
+    tokenExists().then((yes) => {
+      setScreen(yes ? "home" : "login")
+      if (yes) load()
+    })
+  }, [load])
+
+  useEffect(() => {
+    if (authExpired && screen !== "login") signedOut(true)
+  }, [authExpired, screen, signedOut])
+
+  useEffect(() => {
+    const dark = matchMedia("(prefers-color-scheme: dark)").matches
+    const theme =
+      settings.theme === "system" ? (dark ? "dark" : "light") : settings.theme
+    document.documentElement.dataset.theme = theme
+  }, [settings.theme])
+
+  return (
+    <div className="app">
+      {screen === "loading" && (
+        <main
+          className="body"
+          style={{ alignItems: "center", justifyContent: "center" }}>
+          <span className="spinner muted" aria-label="Loading" />
+        </main>
+      )}
+      {screen === "login" && (
+        <Login
+          onSignedIn={() => {
+            setScreen("home")
+            refreshData(true).catch(() => toast(ERROR_TEXT.network))
+          }}
+        />
+      )}
+      {screen === "home" && (
+        <Home
+          onLocations={() => setScreen("locations")}
+          onSettings={() => setScreen("settings")}
+          toast={toast}
+        />
+      )}
+      {screen === "locations" && (
+        <Locations onBack={() => setScreen("home")} toast={toast} />
+      )}
+      {screen === "settings" && (
+        <Settings
+          onBack={() => setScreen("home")}
+          onSignedOut={() => setScreen("login")}
+        />
+      )}
+
+      {toastText && (
+        <div className="toast" role="alert">
+          <span className="error" style={{ flexShrink: 0 }}>
+            <AlertIcon size={16} />
+          </span>
+          {toastText}
+        </div>
+      )}
+    </div>
+  )
+}

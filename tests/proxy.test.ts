@@ -87,3 +87,33 @@ describe("parseProxyConfig", () => {
     }
   })
 })
+
+describe("sites that skip the VPN", () => {
+  it("normalizes what people paste", async () => {
+    const { normalizeSite } = await import("~helpers/proxy")
+    expect(normalizeSite(" https://Bank.Example/login?x=1 ")).toBe(
+      "bank.example"
+    )
+    expect(normalizeSite("*.bank.example")).toBe("bank.example")
+    expect(normalizeSite("localhost")).toBeNull()
+    expect(normalizeSite("not a site")).toBeNull()
+  })
+
+  it("the host and its subdomains go direct, in both browsers", async () => {
+    const { chromeProxyConfig, firefoxProxyConfig } = await import(
+      "~helpers/proxy"
+    )
+    expect(
+      chromeProxyConfig(endpoint, ["bank.example"]).rules.bypassList
+    ).toEqual(
+      expect.arrayContaining([
+        "api.octa.space",
+        "bank.example",
+        "*.bank.example"
+      ])
+    )
+    expect(
+      firefoxProxyConfig(endpoint, ["bank.example"]).passthrough
+    ).toContain("*.bank.example")
+  })
+})

@@ -11,10 +11,16 @@ import {
   WATCHDOG_PERIOD_MIN
 } from "./config"
 import { AppError, toErrorCode, type ErrorCode } from "./errors"
+import {
+  DEFAULT_SETTINGS,
+  type SessionView,
+  type Settings,
+  type VpnNode
+} from "./model"
 import { createApi, type Api } from "./octa"
 import { ext, toolbarAction } from "./platform"
 import { applyProxy, clearProxy, readProxyControl } from "./proxy"
-import { getToken, storage } from "./storage"
+import { getToken, KEYS, storage } from "./storage"
 
 export type ProxyStatus =
   | "Disconnected"
@@ -23,8 +29,6 @@ export type ProxyStatus =
   | "Disconnecting"
 
 export type Result = { ok: boolean; error?: ErrorCode }
-
-const OPEN_SESSIONS = "openSessions"
 
 let starting: AbortController | null = null
 let queue: Promise<unknown> = Promise.resolve()
@@ -37,7 +41,7 @@ function serial<T>(task: () => Promise<T>): Promise<T> {
 }
 
 async function setStatus(status: ProxyStatus): Promise<void> {
-  await storage.set("proxyStatus", status)
+  await storage.set(KEYS.proxyStatus, status)
   toolbarAction?.setBadgeText({ text: status === "Connected" ? "ON" : "" })
   toolbarAction?.setBadgeBackgroundColor({ color: "#2f9e44" })
 }
@@ -49,18 +53,18 @@ async function api(): Promise<Api> {
 }
 
 async function openSessions(): Promise<string[]> {
-  return (await storage.get<string[]>(OPEN_SESSIONS)) ?? []
+  return (await storage.get<string[]>(KEYS.openSessions)) ?? []
 }
 
 async function remember(uuid: string) {
-  await storage.set(OPEN_SESSIONS, [
+  await storage.set(KEYS.openSessions, [
     ...new Set([...(await openSessions()), uuid])
   ])
 }
 
 async function forget(uuid: string) {
   await storage.set(
-    OPEN_SESSIONS,
+    KEYS.openSessions,
     (await openSessions()).filter((u) => u !== uuid)
   )
 }
@@ -77,7 +81,7 @@ async function stopOpenSessions(client: Api): Promise<void> {
       else console.error("Stopping session failed:", toErrorCode(err))
     }
   }
-  await storage.set("uuid", "")
+  await storage.set(KEYS.uuid, "")
 }
 
 const sleep = (ms: number, signal: AbortSignal) =>
@@ -96,12 +100,12 @@ const sleep = (ms: number, signal: AbortSignal) =>
 
 async function balanceOk(client: Api): Promise<boolean> {
   const balance = await client.balance()
-  await storage.set("balance", balance.toFixed(2))
+  await storage.set(KEYS.balance, balance)
   return balance >= MIN_BALANCE
 }
 
 async function teardown(error?: ErrorCode): Promise<void> {
-  if ((await storage.get<ProxyStatus>("proxyStatus")) !== "Disconnected") {
+  if ((await storage.get<ProxyStatus>(KEYS.proxyStatus)) !== "Disconnected") {
     await setStatus("Disconnecting")
   }
   await clearProxy()
@@ -114,8 +118,9 @@ async function teardown(error?: ErrorCode): Promise<void> {
       console.warn("Stopping sessions deferred:", toErrorCode(err))
     }
   }
-  await storage.set("uuid", "")
-  await storage.set("lastError", error ?? "")
+  await storage.set(KEYS.uuid, "")
+  await storage.remove(KEYS.session)
+  await storage.set(KEYS.lastError, error ?? "")
   await setStatus("Disconnected")
   ext.alarms.clear(WATCHDOG_ALARM)
 }
@@ -139,7 +144,7 @@ async function startSession(
   await setStatus("Connecting")
   const uuid = await client.start(nodeId)
   await remember(uuid)
-  await storage.set("uuid", uuid)
+  await storage.set(KEYS.uuid, uuid)
 
   const deadline = Date.now() + SESSION_READY_TIMEOUT_MS
   let info = await client.info(uuid, signal)
@@ -152,16 +157,32 @@ async function startSession(
   signal.throwIfAborted()
 
   try {
-    await applyProxy(info.endpoint)
+    const settings =
+      (await storage.get<Settings>(KEYS.settings)) ?? DEFAULT_SETTINGS
+    await applyProxy(info.endpoint, settings.bypassSites)
   } catch (err) {
     throw err instanceof AppError ? err : new AppError("proxy_failed")
   }
-  await Promise.all([
-    storage.set("ipConnected", info.ip),
-    storage.set("cityConnected", info.city),
-    storage.set("countryConnected", info.country),
-    storage.set("lastError", "")
-  ])
+  // the node as listed: its price and place; the session: where it exits
+  const node = ((await storage.get<VpnNode[]>(KEYS.nodes)) ?? []).find(
+    (n) => n.node_number === nodeId
+  )
+  const view: SessionView = {
+    node_number: nodeId,
+    ip: info.ip,
+    city: info.city || node?.city || "",
+    country: info.country || node?.country || "",
+    country_iso: info.country_iso || node?.country_iso || "",
+    lat: node?.lat ?? null,
+    lon: node?.lon ?? null,
+    price: node?.price ?? 0,
+    started_at: info.started_at,
+    rx: info.rx,
+    tx: info.tx,
+    charged: info.charged
+  }
+  await storage.set(KEYS.session, view)
+  await storage.set(KEYS.lastError, "")
   await setStatus("Connected")
   ext.alarms.create(WATCHDOG_ALARM, { periodInMinutes: WATCHDOG_PERIOD_MIN })
 }
@@ -173,14 +194,14 @@ export function connect(nodeId: string): Promise<Result> {
     const ctrl = new AbortController()
     starting = ctrl
     try {
-      if ((await storage.get<ProxyStatus>("proxyStatus")) !== "Disconnected")
+      if ((await storage.get<ProxyStatus>(KEYS.proxyStatus)) !== "Disconnected")
         await teardown()
       await startSession(nodeId, ctrl.signal)
       return { ok: true } as const
     } catch (err) {
       const error = ctrl.signal.aborted ? "cancelled" : toErrorCode(err)
       await teardown(error === "cancelled" ? undefined : error)
-      if (error === "auth_expired") await storage.set("authExpired", true)
+      if (error === "auth_expired") await storage.set(KEYS.authExpired, true)
       return { ok: false, error } as const
     } finally {
       if (starting === ctrl) starting = null
@@ -203,7 +224,7 @@ export function disconnect(): Promise<Result> {
  */
 export function check(): Promise<void> {
   return serial(async () => {
-    const status = await storage.get<ProxyStatus>("proxyStatus")
+    const status = await storage.get<ProxyStatus>(KEYS.proxyStatus)
     const control = await readProxyControl()
     if (status !== "Connected") {
       // a start or stop cut short when the worker died
@@ -218,18 +239,27 @@ export function check(): Promise<void> {
     }
     if (control !== "on") return teardown("proxy_blocked")
 
-    const uuid = await storage.get<string>("uuid")
+    const uuid = await storage.get<string>(KEYS.uuid)
     if (!uuid) return teardown()
     try {
       const client = await api()
-      await client.info(uuid)
+      const info = await client.info(uuid)
+      const view = await storage.get<SessionView>(KEYS.session)
+      if (view) {
+        await storage.set(KEYS.session, {
+          ...view,
+          rx: info.rx,
+          tx: info.tx,
+          charged: info.charged
+        })
+      }
       if (!(await balanceOk(client))) await teardown("low_balance")
     } catch (err) {
       const code = toErrorCode(err)
       if (code === "node_unavailable") await teardown("session_ended")
       else if (code === "auth_expired") {
         await teardown("auth_expired")
-        await storage.set("authExpired", true)
+        await storage.set(KEYS.authExpired, true)
       }
       // a network blip: keep the session, the next tick checks again
     }

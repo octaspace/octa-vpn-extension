@@ -35,24 +35,56 @@ export function parseProxyConfig(config: unknown): ProxyEndpoint | null {
 /** Who controls the browser's proxy: us (on or off), or someone else. */
 export type ProxyControl = "on" | "off" | "blocked"
 
-export function chromeProxyConfig({ host, port }: ProxyEndpoint) {
+export function chromeProxyConfig(
+  { host, port }: ProxyEndpoint,
+  extra: string[] = []
+) {
   return {
     mode: "fixed_servers",
     rules: {
       singleProxy: { scheme: "http", host, port },
-      bypassList: PROXY_BYPASS
+      bypassList: bypassList(extra)
     }
   }
 }
 
-export function firefoxProxyConfig({ host, port }: ProxyEndpoint) {
+export function firefoxProxyConfig(
+  { host, port }: ProxyEndpoint,
+  extra: string[] = []
+) {
   return {
     proxyType: "manual",
     http: `${host}:${port}`,
     httpProxyAll: true,
     // Firefox takes a comma-separated string here, not an array
-    passthrough: PROXY_BYPASS.filter((h) => h !== "<local>").join(", ")
+    passthrough: bypassList(extra)
+      .filter((h) => h !== "<local>")
+      .join(", ")
   }
+}
+
+/**
+ * A site the user sends direct: a host name, without scheme or path, and its
+ * subdomains (`bank.example` and `*.bank.example`).
+ */
+export function normalizeSite(input: string): string | null {
+  const host = input
+    .trim()
+    .toLowerCase()
+    .replace(/^[a-z]+:\/\//, "")
+    .replace(/^\*\./, "")
+    .split(/[/?#:]/)[0]
+  return /^(?=.{1,253}$)([a-z0-9-]{1,63}\.)+[a-z]{2,63}$/.test(host)
+    ? host
+    : null
+}
+
+function bypassList(extra: string[]): string[] {
+  const sites = extra.flatMap((s) => {
+    const host = normalizeSite(s)
+    return host ? [host, `*.${host}`] : []
+  })
+  return [...PROXY_BYPASS, ...sites]
 }
 
 const OURS = new Set([
@@ -78,15 +110,18 @@ export async function readProxyControl(): Promise<ProxyControl> {
 }
 
 /** Routes the browser through the node; throws when the browser refuses. */
-export async function applyProxy(endpoint: ProxyEndpoint): Promise<void> {
+export async function applyProxy(
+  endpoint: ProxyEndpoint,
+  extra: string[] = []
+): Promise<void> {
   if ((await readProxyControl()) === "blocked") {
     throw new AppError("proxy_blocked")
   }
   if (IS_FIREFOX) {
-    await ext.proxy.settings.set({ value: firefoxProxyConfig(endpoint) })
+    await ext.proxy.settings.set({ value: firefoxProxyConfig(endpoint, extra) })
   } else {
     await ext.proxy.settings.set({
-      value: chromeProxyConfig(endpoint),
+      value: chromeProxyConfig(endpoint, extra),
       scope: "regular"
     })
   }

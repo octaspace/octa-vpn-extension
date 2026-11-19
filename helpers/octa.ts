@@ -1,23 +1,11 @@
 import { isVpnSession, OctaClient } from "@octaspace/sdk"
 
 import { API_HOST } from "./config"
+import type { Geo, VpnNode } from "./model"
 import { parseProxyConfig, type ProxyEndpoint } from "./proxy"
 
 // The one seam between the extension and the OctaSpace API: the rest of the
 // code never touches the SDK.
-
-/** A node the browser can use: it passed the check of the `http_proxy` VPN. */
-export type VpnNode = {
-  node_number: string
-  country: string
-  country_iso: string
-  city: string
-  /** USD per GB of traffic */
-  price: number
-  /** Mbit/s, 0 if not measured */
-  down: number
-  up: number
-}
 
 export type SessionInfo = {
   ready: boolean
@@ -25,9 +13,13 @@ export type SessionInfo = {
   ip: string
   city: string
   country: string
+  country_iso: string
+  started_at: number
+  rx: number
+  tx: number
+  /** USD */
+  charged: number
 }
-
-export type Geo = { ip: string; city: string; country: string }
 
 const PROTOCOL = "http_proxy"
 const MICRO_USD = 1_000_000
@@ -52,7 +44,9 @@ export function createApi(apiKey: string) {
           city: n.city ?? "",
           price: n.traffic_price / MICRO_USD,
           down: n.net_down_mbps ?? 0,
-          up: n.net_up_mbps ?? 0
+          up: n.net_up_mbps ?? 0,
+          lat: n.latitude ?? null,
+          lon: n.longitude ?? null
         }))
     },
 
@@ -74,7 +68,12 @@ export function createApi(apiKey: string) {
         endpoint: parseProxyConfig(vpn?.config),
         ip: vpn?.public_ip ?? "",
         city: vpn?.city ?? "",
-        country: vpn?.country ?? ""
+        country: vpn?.country ?? "",
+        country_iso: (vpn?.country_iso ?? "").toUpperCase(),
+        started_at: s.started_at ?? Date.now(),
+        rx: vpn?.rx ?? 0,
+        tx: vpn?.tx ?? 0,
+        charged: (s.charge_amount ?? 0) / MICRO_USD
       }
     },
 
@@ -92,10 +91,14 @@ export function createApi(apiKey: string) {
       })
       if (!res.ok) throw new Error(`geo ${res.status}`)
       const data = await res.json()
+      const num = (v: unknown) => (typeof v === "number" ? v : null)
       return {
         ip: data.ip ?? "",
         city: data.city ?? "",
-        country: data.country ?? ""
+        country: data.country ?? "",
+        country_iso: (data.isocode ?? "").toUpperCase(),
+        lat: num(data.latitude),
+        lon: num(data.longitude)
       }
     }
   }

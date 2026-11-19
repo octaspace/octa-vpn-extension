@@ -7,6 +7,7 @@ import { ext } from "./platform"
 export type Request =
   | { type: "connect"; nodeId: string }
   | { type: "disconnect" }
+  | { type: "refresh" }
   | { type: "login" }
   | { type: "loginWithKey"; key: string }
   | { type: "signOut" }

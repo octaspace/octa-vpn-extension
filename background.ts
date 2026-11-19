@@ -22,6 +22,10 @@ async function handle(request: Request): Promise<Response> {
       return connect(request.nodeId)
     case "disconnect":
       return disconnect()
+    case "refresh":
+      // the popup's meter: the session's traffic and charge, now
+      await check()
+      return { ok: true }
     case "login":
       return attempt(login)
     case "loginWithKey":
