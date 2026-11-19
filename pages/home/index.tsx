@@ -20,6 +20,7 @@ import { FlagIcon } from "./flagicon";
 import { connect } from "~helpers/connection";
 import { bestNode } from "~helpers/nodes";
 import { notify } from "~components/notify";
+import { FocusStart } from "~components/focusstart";
 import { useNavigate } from "react-router-dom";
 
 function Home() {
@@ -159,6 +160,7 @@ function Home() {
             title: { color: isDark ? theme.white : theme.black },
             inner: { backgroundColor: isDark ? theme.colors.dark[6] : theme.white }
           }}>
+          <FocusStart />
           <Settings />
         </Modal>
         
@@ -169,6 +171,7 @@ function Home() {
             body: { paddingRight: 14, paddingLeft: 14, paddingBottom: 14 },
             close: { color: isDark ? theme.colors.gray[5] : theme.colors.gray[6] }
           }}>
+          <FocusStart />
           <List close={CloseModel} />
         </Modal>
 
