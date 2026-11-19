@@ -42,6 +42,10 @@ export type SessionView = {
   tx: number
   /** USD charged so far */
   charged: number
+  /** USD, when the session started: the low-balance warning is relative to it */
+  start_balance: number
+  /** the low-balance warning was shown for this session */
+  warned: boolean
 }
 
 /** Where to exit: the best node anywhere, in one country, or one node. */

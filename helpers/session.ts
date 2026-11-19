@@ -4,13 +4,16 @@
 // browser: every uuid started is remembered until its stop succeeded.
 
 import {
+  LOW_BALANCE_USD,
   MIN_BALANCE,
   SESSION_POLL_MS,
   SESSION_READY_TIMEOUT_MS,
+  STOP_RETRY_MS,
+  STOP_TRIES,
   WATCHDOG_ALARM,
   WATCHDOG_PERIOD_MIN
 } from "./config"
-import { AppError, toErrorCode, type ErrorCode } from "./errors"
+import { AppError, ERROR_TEXT, toErrorCode, type ErrorCode } from "./errors"
 import {
   DEFAULT_SETTINGS,
   type SessionView,
@@ -69,19 +72,43 @@ async function forget(uuid: string) {
   )
 }
 
-/** Stops every session we started and did not see stopped. */
-async function stopOpenSessions(client: Api): Promise<void> {
-  for (const uuid of await openSessions()) {
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+/**
+ * Stops a session, a few tries on network errors. One gone on the node is
+ * stopped already; one that keeps failing stays remembered for the next start.
+ */
+async function stopSession(client: Api, uuid: string): Promise<void> {
+  for (let attempt = 1; ; attempt++) {
     try {
       await client.stop(uuid)
-      await forget(uuid)
+      return forget(uuid)
     } catch (err) {
-      // already gone on the node: nothing left to bill
-      if (toErrorCode(err) === "node_unavailable") await forget(uuid)
-      else console.error("Stopping session failed:", toErrorCode(err))
+      const code = toErrorCode(err)
+      if (code === "node_unavailable") return forget(uuid)
+      if (code === "auth_expired" || attempt >= STOP_TRIES) {
+        console.warn("Stopping session deferred:", code)
+        return
+      }
+      await wait(STOP_RETRY_MS)
     }
   }
+}
+
+/** Stops every session we started and did not see stopped. */
+async function stopOpenSessions(client: Api): Promise<void> {
+  for (const uuid of await openSessions()) await stopSession(client, uuid)
   await storage.set(KEYS.uuid, "")
+}
+
+/** A notification of its own: the popup is closed when the background acts. */
+function alert(message: string) {
+  ext.notifications?.create({
+    type: "basic",
+    iconUrl: ext.runtime.getURL(ext.runtime.getManifest().icons?.["128"] ?? ""),
+    title: "Octa VPN",
+    message
+  })
 }
 
 const sleep = (ms: number, signal: AbortSignal) =>
@@ -98,10 +125,32 @@ const sleep = (ms: number, signal: AbortSignal) =>
     )
   })
 
-async function balanceOk(client: Api): Promise<boolean> {
+async function readBalance(client: Api): Promise<number> {
   const balance = await client.balance()
   await storage.set(KEYS.balance, balance)
-  return balance >= MIN_BALANCE
+  return balance
+}
+
+/**
+ * The session until it is ready. A 404 is a session that stopped (its start
+ * failed on the node); any other error is a blip, polled through until the
+ * deadline, as the Android app does.
+ */
+async function waitReady(client: Api, uuid: string, signal: AbortSignal) {
+  const deadline = Date.now() + SESSION_READY_TIMEOUT_MS
+  for (;;) {
+    try {
+      const info = await client.info(uuid, signal)
+      if (info.ready) return info
+    } catch (err) {
+      signal.throwIfAborted()
+      const code = toErrorCode(err)
+      if (code === "node_unavailable" || code === "auth_expired") throw err
+    }
+    if (Date.now() + SESSION_POLL_MS > deadline)
+      throw new AppError("node_unavailable")
+    await sleep(SESSION_POLL_MS, signal)
+  }
 }
 
 async function teardown(error?: ErrorCode): Promise<void> {
@@ -139,20 +188,22 @@ async function startSession(
   }
   const client = await api()
   await stopOpenSessions(client)
-  if (!(await balanceOk(client))) throw new AppError("low_balance")
+  // the node as listed: its price and place
+  const node = ((await storage.get<VpnNode[]>(KEYS.nodes)) ?? []).find(
+    (n) => n.node_number === nodeId
+  )
+  // the core asks for at least 1 GB of the node's traffic
+  const balance = await readBalance(client)
+  if (balance < Math.max(MIN_BALANCE, node?.price ?? 0)) {
+    throw new AppError("low_balance")
+  }
 
   await setStatus("Connecting")
   const uuid = await client.start(nodeId)
   await remember(uuid)
   await storage.set(KEYS.uuid, uuid)
 
-  const deadline = Date.now() + SESSION_READY_TIMEOUT_MS
-  let info = await client.info(uuid, signal)
-  while (!info.ready) {
-    if (Date.now() > deadline) throw new AppError("node_unavailable")
-    await sleep(SESSION_POLL_MS, signal)
-    info = await client.info(uuid, signal)
-  }
+  const info = await waitReady(client, uuid, signal)
   if (!info.endpoint) throw new AppError("node_unavailable")
   signal.throwIfAborted()
 
@@ -163,10 +214,6 @@ async function startSession(
   } catch (err) {
     throw err instanceof AppError ? err : new AppError("proxy_failed")
   }
-  // the node as listed: its price and place; the session: where it exits
-  const node = ((await storage.get<VpnNode[]>(KEYS.nodes)) ?? []).find(
-    (n) => n.node_number === nodeId
-  )
   const view: SessionView = {
     node_number: nodeId,
     ip: info.ip,
@@ -179,7 +226,9 @@ async function startSession(
     started_at: info.started_at,
     rx: info.rx,
     tx: info.tx,
-    charged: info.charged
+    charged: info.charged,
+    start_balance: balance,
+    warned: false
   }
   await storage.set(KEYS.session, view)
   await storage.set(KEYS.lastError, "")
@@ -244,6 +293,8 @@ export function check(): Promise<void> {
     try {
       const client = await api()
       const info = await client.info(uuid)
+      const settings =
+        (await storage.get<Settings>(KEYS.settings)) ?? DEFAULT_SETTINGS
       const view = await storage.get<SessionView>(KEYS.session)
       if (view) {
         await storage.set(KEYS.session, {
@@ -253,10 +304,26 @@ export function check(): Promise<void> {
           charged: info.charged
         })
       }
-      if (!(await balanceOk(client))) await teardown("low_balance")
+      if (settings.spendLimit > 0 && info.charged >= settings.spendLimit) {
+        return stopBecause("spend_limit")
+      }
+      const balance = await readBalance(client)
+      // the core stops it at $0.01 itself: stop first, and say why
+      if (balance < MIN_BALANCE) return stopBecause("low_balance")
+      if (
+        view &&
+        !view.warned &&
+        settings.lowBalanceWarning &&
+        isLow(balance, view.start_balance)
+      ) {
+        await storage.set(KEYS.session, { ...view, warned: true })
+        alert(
+          `Balance is running low: $${Math.max(0, balance).toFixed(2)} left.`
+        )
+      }
     } catch (err) {
       const code = toErrorCode(err)
-      if (code === "node_unavailable") await teardown("session_ended")
+      if (code === "node_unavailable") await stopBecause("session_ended")
       else if (code === "auth_expired") {
         await teardown("auth_expired")
         await storage.set(KEYS.authExpired, true)
@@ -264,4 +331,15 @@ export function check(): Promise<void> {
       // a network blip: keep the session, the next tick checks again
     }
   })
+}
+
+/** The background ends the session on its own: say why, popup open or not. */
+async function stopBecause(code: ErrorCode): Promise<void> {
+  await teardown(code)
+  alert(ERROR_TEXT[code])
+}
+
+/** Below $0.25, or below 10% of the balance at the start, whichever is higher. */
+export function isLow(balance: number, startBalance: number): boolean {
+  return balance < Math.max(LOW_BALANCE_USD, startBalance * 0.1)
 }

@@ -19,6 +19,7 @@ export type ErrorCode =
   | "proxy_blocked"
   | "proxy_failed"
   | "session_ended"
+  | "spend_limit"
   | "unknown"
 
 export class AppError extends Error {
@@ -39,4 +40,24 @@ export function toErrorCode(err: unknown): ErrorCode {
   }
   if (err instanceof OctaError) return "network"
   return "unknown"
+}
+
+/** What the user reads, in the popup and in notifications. */
+export const ERROR_TEXT: Record<ErrorCode, string> = {
+  auth_expired: "Your session has expired. Please sign in again.",
+  auth_failed: "Sign-in failed. Please try again.",
+  cancelled: "Cancelled.",
+  incognito_required:
+    "Allow the extension to run in private windows: Firefox requires it to set a proxy.",
+  invalid_key:
+    "This API key is not valid. Create one in the console under Credentials.",
+  low_balance: "Not enough balance for this node. Top up in the console.",
+  network: "Network error. Check your connection and try again.",
+  no_node: "No affordable node for this location.",
+  node_unavailable: "This node is unavailable. Try another location.",
+  proxy_blocked: "Another extension controls the browser's proxy settings.",
+  proxy_failed: "The browser refused the proxy settings.",
+  session_ended: "The VPN session has ended on the node.",
+  spend_limit: "The session reached your spending limit and was stopped.",
+  unknown: "Something went wrong. Please try again."
 }

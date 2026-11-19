@@ -26,15 +26,25 @@ export const PROXY_BYPASS = [
 ]
 
 // A node needs a few seconds to provision the proxy.
-export const SESSION_READY_TIMEOUT_MS = 30_000
+// A node may take a minute to start the proxy, as the Android app allows.
+export const SESSION_READY_TIMEOUT_MS = 60_000
 export const SESSION_POLL_MS = 2_000
 
 // While connected: is the session still alive, is there money left.
 export const WATCHDOG_ALARM = "session-watchdog"
-export const WATCHDOG_PERIOD_MIN = 1
+// 30 s: the shortest alarm Chrome allows; the spending limit is checked as often
+export const WATCHDOG_PERIOD_MIN = 0.5
 
 // Below this balance a session is not started and a running one is stopped.
 export const MIN_BALANCE = 0.01
+
+// Warn once a session when the balance falls below this, or below 10% of what
+// it was at the start, whichever is higher (as the Android app does).
+export const LOW_BALANCE_USD = 0.25
+
+// Stopping a session: a few tries before it waits for the next start.
+export const STOP_TRIES = 3
+export const STOP_RETRY_MS = 2_000
 
 // A listing fetched with a key is at most 10 s old on the server.
 export const NODES_TTL_MS = 2 * 60_000

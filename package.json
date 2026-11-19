@@ -40,7 +40,8 @@
       "identity",
       "storage",
       "alarms",
-      "privacy"
+      "privacy",
+      "notifications"
     ],
     "host_permissions": [
       "https://api.octa.space/*",

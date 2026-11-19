@@ -30,6 +30,7 @@ export interface ExtensionApi {
   runtime: typeof chrome.runtime
   alarms: typeof chrome.alarms
   action?: typeof chrome.action
+  notifications?: { create(options: object): Promise<string> | void }
   browserAction?: typeof chrome.action
 }
 

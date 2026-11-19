@@ -43,12 +43,21 @@ vi.mock("~helpers/storage", async (importOriginal) => ({
   getToken: async () => "token"
 }))
 vi.mock("~helpers/octa", () => ({ createApi: () => api }))
+const notify = vi.fn()
 vi.mock("~helpers/platform", () => ({
   ext: {
     alarms: { create: vi.fn(), clear: vi.fn() },
-    extension: { isAllowedIncognitoAccess: async () => true }
+    extension: { isAllowedIncognitoAccess: async () => true },
+    notifications: { create: (o: { message: string }) => notify(o.message) },
+    runtime: { getURL: (p: string) => p, getManifest: () => ({ icons: {} }) }
   },
   toolbarAction: undefined
+}))
+// no waiting between polls and retries in tests
+vi.mock("~helpers/config", async (importOriginal) => ({
+  ...((await importOriginal()) as object),
+  SESSION_POLL_MS: 1,
+  STOP_RETRY_MS: 1
 }))
 vi.mock("~helpers/proxy", () => ({
   applyProxy: vi.fn(async () => void (proxy.on = true)),
@@ -119,9 +128,20 @@ describe("session", () => {
     expect(store.get("proxyStatus")).toBe("Disconnected")
   })
 
-  it("a stop that failed is retried before the next start", async () => {
+  it("a stop is retried a few times on network errors", async () => {
     await connect("7KQ4-M2XD-4")
     api.stop.mockRejectedValueOnce(new Error("offline"))
+    await disconnect()
+    expect(api.stop).toHaveBeenCalledTimes(2)
+    expect(store.get("openSessions")).toEqual([])
+  })
+
+  it("a stop that keeps failing is retried before the next start", async () => {
+    await connect("7KQ4-M2XD-4")
+    api.stop
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockRejectedValueOnce(new Error("offline"))
     await disconnect()
     expect(store.get("openSessions")).toEqual(["uuid-1"])
     api.start.mockResolvedValueOnce("uuid-2")
@@ -157,5 +177,72 @@ describe("fresh install", () => {
     expect(store.get("proxyStatus")).toBe("Disconnected")
     expect(api.stop).not.toHaveBeenCalled()
     expect(api.info).not.toHaveBeenCalled()
+  })
+})
+
+describe("start and watch, as the Android app does", () => {
+  const node = {
+    node_number: "7KQ4-M2XD-4",
+    price: 2,
+    country: "Germany",
+    city: "",
+    country_iso: "DE",
+    down: 0,
+    up: 0,
+    lat: null,
+    lon: null
+  }
+
+  it("refuses a balance below 1 GB of the node", async () => {
+    store.set("nodes", [node])
+    api.balance.mockResolvedValueOnce(1)
+    expect(await connect("7KQ4-M2XD-4")).toEqual({
+      ok: false,
+      error: "low_balance"
+    })
+    expect(api.start).not.toHaveBeenCalled()
+  })
+
+  it("a network blip while the node starts does not end the start", async () => {
+    api.info
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValueOnce({ ...EMPTY, ready: false })
+    expect(await connect("7KQ4-M2XD-4")).toEqual({ ok: true })
+    expect(api.info).toHaveBeenCalledTimes(3)
+  })
+
+  it("the spending limit stops the session and says so", async () => {
+    store.set("settings", {
+      spendLimit: 0.5,
+      lowBalanceWarning: true,
+      bypassSites: [],
+      theme: "system"
+    })
+    await connect("7KQ4-M2XD-4")
+    api.info.mockResolvedValueOnce({ ...EMPTY, ready: true, charged: 0.5 })
+    await check()
+    expect(store.get("proxyStatus")).toBe("Disconnected")
+    expect(store.get("lastError")).toBe("spend_limit")
+    expect(notify).toHaveBeenCalledWith(expect.stringMatching(/spending limit/))
+  })
+
+  it("warns once when the balance runs low", async () => {
+    await connect("7KQ4-M2XD-4")
+    api.balance.mockResolvedValue(0.2)
+    await check()
+    await check()
+    api.balance.mockResolvedValue(1)
+    expect(notify).toHaveBeenCalledTimes(1)
+    expect(notify).toHaveBeenCalledWith(expect.stringMatching(/running low/))
+    expect(store.get("proxyStatus")).toBe("Connected")
+  })
+})
+
+describe("isLow", () => {
+  it("below $0.25 or 10% of the start", async () => {
+    const { isLow } = await import("~helpers/session")
+    expect(isLow(0.2, 1)).toBe(true)
+    expect(isLow(0.3, 1)).toBe(false)
+    expect(isLow(4, 50)).toBe(true)
   })
 })
