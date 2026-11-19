@@ -8,6 +8,7 @@ export type Request =
   | { type: "connect"; nodeId: number }
   | { type: "disconnect" }
   | { type: "login" }
+  | { type: "loginWithKey"; key: string }
   | { type: "signOut" }
 
 export type Response = { ok: boolean; error?: ErrorCode }

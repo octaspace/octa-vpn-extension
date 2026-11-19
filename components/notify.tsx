@@ -11,6 +11,7 @@ const MESSAGES: Record<ErrorCode, [string, ReactNode]> = {
   auth_expired: ["Session expired. Please sign in again.", <RiLockLine />],
   auth_failed: ["Sign-in failed. Please try again.", <RiLockLine />],
   cancelled: ["Cancelled", <BsEmojiDizzy />],
+  invalid_key: ["This API key is not valid. Create one in the console under Credentials.", <RiLockLine />],
   incognito_required: [
     "Allow the extension to run in private windows",
     <GiDominoMask />

@@ -2,16 +2,15 @@
 // the background: the auth window takes focus and closes the popup, which
 // would take the flow down with it.
 
-import { OAUTH_CLIENT_ID, OAUTH_HOST } from "./config"
+import { API_HOST, OAUTH_CLIENT_ID, OAUTH_HOST } from "./config"
 import { AppError } from "./errors"
-import { createApi } from "./octa"
 import {
   generateCodeChallenge,
   generateCodeVerifier,
   randomString
 } from "./pkce"
 import { ext } from "./platform"
-import { clearData, setToken } from "./storage"
+import { API_KEY_PATTERN, clearData, setToken } from "./storage"
 
 export function authorizeUrl(
   redirectUri: string,
@@ -57,13 +56,43 @@ async function exchangeCode(
   return data.access_token
 }
 
-async function fetchApiKey(accessToken: string): Promise<string> {
-  const data = await requestJson(`${OAUTH_HOST}/api/v1/profiles/me`, {
-    method: "GET",
+/**
+ * The console issues this app an API key for the account on every sign-in;
+ * the previous one stops working.
+ */
+async function issueApiKey(accessToken: string): Promise<string> {
+  const data = await requestJson(`${OAUTH_HOST}/api/v1/api_key`, {
+    method: "POST",
     headers: { Authorization: `Bearer ${accessToken}` }
   })
-  if (typeof data?.token !== "string") throw new AppError("auth_failed")
-  return data.token
+  if (typeof data?.key !== "string") throw new AppError("auth_failed")
+  return data.key
+}
+
+/** Whether the public API takes the key: 401 is a bad key, else the network. */
+export async function verifyKey(key: string): Promise<void> {
+  if (!API_KEY_PATTERN.test(key)) throw new AppError("invalid_key")
+  let res: Response
+  try {
+    res = await fetch(`${API_HOST}/accounts/balance`, {
+      headers: { Authorization: `Bearer ${key}` }
+    })
+  } catch {
+    throw new AppError("network")
+  }
+  if (res.status === 401) throw new AppError("invalid_key")
+  if (!res.ok) throw new AppError("network")
+}
+
+async function signIn(key: string): Promise<void> {
+  await verifyKey(key)
+  await clearData()
+  await setToken(key)
+}
+
+/** Signs in with a key made by hand in the console (Credentials). */
+export function loginWithKey(key: string): Promise<void> {
+  return signIn(key.trim())
 }
 
 /** Signs the user in; resolves once the API key is stored. */
@@ -88,10 +117,7 @@ export async function login(): Promise<void> {
   const code = params.get("code")
   if (!code || params.get("state") !== state) throw new AppError("auth_failed")
 
-  const apiKey = await fetchApiKey(
-    await exchangeCode(code, verifier, redirectUri)
+  await signIn(
+    await issueApiKey(await exchangeCode(code, verifier, redirectUri))
   )
-  await createApi(apiKey).balance() // the key works
-  await clearData()
-  await setToken(apiKey)
 }

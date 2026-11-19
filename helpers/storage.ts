@@ -31,8 +31,11 @@ export async function getToken(): Promise<string | undefined> {
     return await secureStorage.get("token")
 }
 
+export const API_KEY_PATTERN = /^octa_ak_[A-Za-z0-9_-]{32}$/
+
+// Keys of the old API (64 hex) are refused by the new one: signing in again.
 export async function tokenExists() {
-    return (await getToken())?.length === 64
+    return API_KEY_PATTERN.test((await getToken()) ?? "")
 }
 
 export async function clearData() {

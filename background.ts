@@ -1,4 +1,4 @@
-import { login } from "~helpers/auth"
+import { login, loginWithKey } from "~helpers/auth"
 import { WATCHDOG_ALARM } from "~helpers/config"
 import { toErrorCode } from "~helpers/errors"
 import type { Request, Response } from "~helpers/messages"
@@ -7,6 +7,15 @@ import { onProxyError } from "~helpers/proxy"
 import { check, connect, disconnect } from "~helpers/session"
 import { clearData } from "~helpers/storage"
 
+async function attempt(task: () => Promise<void>): Promise<Response> {
+  try {
+    await task()
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: toErrorCode(err) }
+  }
+}
+
 async function handle(request: Request): Promise<Response> {
   switch (request.type) {
     case "connect":
@@ -14,12 +23,9 @@ async function handle(request: Request): Promise<Response> {
     case "disconnect":
       return disconnect()
     case "login":
-      try {
-        await login()
-        return { ok: true }
-      } catch (err) {
-        return { ok: false, error: toErrorCode(err) }
-      }
+      return attempt(login)
+    case "loginWithKey":
+      return attempt(() => loginWithKey(request.key))
     case "signOut":
       // stop the session while the key is still there
       await disconnect()

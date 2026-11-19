@@ -54,7 +54,7 @@
     "host_permissions": [
       "https://api.octa.space/*",
       "https://api.octa.computer/*",
-      "https://cube.octa.computer/*",
+      "https://console.octa.space/*",
       "https://ifconfig.octa.computer/*"
     ],
     "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwJ9ASVnZJqzZQzGui/HMHhv7AIZPkvYLOYn258TQUWyOr/VJxJoJOH0oVzGeZQqQSQWj8ItuXJ/nHg5FCrQPq41YvfL3PpUbQlbMkudU3dLH8gCMrIpmbsHD5kYQnGLBiP9FULuM/A2MMHelYX3zJJ2g1sgw8bMp+NNVQGJhQNUyqf42OjyJvTJiu2WdCyvg7SA7WTmHSsNgNXreCxM4nZmbvmWAmfOJJxIJn+D/sgjn9sZdLlqUI25B3aEL6uIai6+PQ8qvk6aQonCSSiadO21pOePbqiXea6albBDoSBpIj/hryYiKV0GkFAiQjScozohvW2mehnt0lAm/YfaBkwIDAQAB"

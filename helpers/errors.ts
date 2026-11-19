@@ -10,6 +10,7 @@ export type ErrorCode =
   | "auth_failed"
   | "cancelled"
   | "incognito_required"
+  | "invalid_key"
   | "low_balance"
   | "network"
   | "no_node"

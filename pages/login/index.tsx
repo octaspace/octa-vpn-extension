@@ -1,12 +1,13 @@
 import { useState } from "react"
 import logo from "data-base64:~assets/img/octa.png";
-import { Box, Button, Stack, Text, Title, useMantineTheme } from '@mantine/core';
+import { Anchor, Box, Button, PasswordInput, Stack, Text, Title, UnstyledButton, useMantineTheme } from '@mantine/core';
 import { Image } from '@mantine/core';
 import { keyframes } from '@emotion/react';
 import { FaCircleCheck } from "react-icons/fa6";
 import { useNavigate } from "react-router-dom";
 import { notifyError } from "~components/notify";
-import { send } from "~helpers/messages";
+import { CONSOLE_API_KEYS_URL } from "~helpers/config";
+import { type Request, send } from "~helpers/messages";
 import { Notifications } from "@mantine/notifications";
 
 const logoGlow = keyframes({
@@ -31,10 +32,13 @@ function Login() {
   const theme = useMantineTheme();
   const isDark = theme.colorScheme === 'dark';
 
+  const [withKey, setWithKey] = useState(false)
+  const [key, setKey] = useState("")
+
   // The background runs the flow: this popup may not survive the auth window.
-  async function launchAuth() {
+  async function signIn(request: Request) {
     setIsLoading(true)
-    const res = await send({ type: "login" })
+    const res = await send(request)
     setIsLoading(false)
     if (!res.ok) {
       if (res.error !== "cancelled") notifyError(res.error)
@@ -78,6 +82,7 @@ function Login() {
             justifyContent: 'center',
             alignItems: 'center',
             zIndex: 2,
+            visibility: withKey ? 'hidden' : 'visible',
           }}
         >
           <Image
@@ -95,7 +100,8 @@ function Login() {
           spacing="lg" 
           sx={{ 
             position: 'absolute',
-            top: 157 + 120 + 32, // Flow right after the circle + spacing
+            // the key form needs the room the logo takes
+            top: withKey ? 48 : 157 + 120 + 32,
             zIndex: 2,
             width: '100%',
           }}
@@ -122,7 +128,7 @@ function Login() {
             color="cube"
             variant={Status ? "light" : "filled"}
             loading={IsLoading}
-            onClick={launchAuth}
+            onClick={() => signIn({ type: "login" })}
             leftIcon={Status ? <FaCircleCheck /> : undefined}
             sx={{
               minWidth: 180,
@@ -144,6 +150,26 @@ function Login() {
           >
             {Status ? "Done" : "Sign In"}
           </Button>
+
+          {withKey ? (
+            <Box component="form" w={260} onSubmit={(e) => { e.preventDefault(); signIn({ type: "loginWithKey", key }) }}>
+              <Stack spacing="xs">
+                <PasswordInput
+                  label="API key"
+                  placeholder="octa_ak_…"
+                  value={key}
+                  onChange={(e) => setKey(e.currentTarget.value)}
+                  autoComplete="off"
+                />
+                <Button type="submit" variant="light" color="cube" disabled={!key.trim() || IsLoading}>Use key</Button>
+                <Anchor href={CONSOLE_API_KEYS_URL} target="_blank" size="xs" align="center">Create a key in the console</Anchor>
+              </Stack>
+            </Box>
+          ) : (
+            <UnstyledButton onClick={() => setWithKey(true)}>
+              <Text size="xs" color="dimmed" td="underline">Sign in with an API key</Text>
+            </UnstyledButton>
+          )}
         </Stack>
 
         <Notifications style={{ width: 'auto' }} position="bottom-right" zIndex={6} />
