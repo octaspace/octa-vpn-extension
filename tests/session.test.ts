@@ -133,3 +133,13 @@ describe("session", () => {
     expect(store.get("proxyStatus")).toBe("Disconnected")
   })
 })
+
+describe("fresh install", () => {
+  it("first worker start settles to Disconnected without calling the API", async () => {
+    store.clear()
+    await check()
+    expect(store.get("proxyStatus")).toBe("Disconnected")
+    expect(api.stop).not.toHaveBeenCalled()
+    expect(api.info).not.toHaveBeenCalled()
+  })
+})

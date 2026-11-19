@@ -105,11 +105,16 @@ async function teardown(error?: ErrorCode): Promise<void> {
     await setStatus("Disconnecting")
   }
   await clearProxy()
-  try {
-    await stopOpenSessions(await api())
-  } catch (err) {
-    console.error("Teardown:", toErrorCode(err))
+  // nothing to stop on a fresh install or after sign-out: no API call, no key needed
+  if ((await openSessions()).length > 0) {
+    try {
+      await stopOpenSessions(await api())
+    } catch (err) {
+      // kept in the list: stopped before the next start
+      console.warn("Stopping sessions deferred:", toErrorCode(err))
+    }
   }
+  await storage.set("uuid", "")
   await storage.set("lastError", error ?? "")
   await setStatus("Disconnected")
   ext.alarms.clear(WATCHDOG_ALARM)
