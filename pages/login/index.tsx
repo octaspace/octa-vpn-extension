@@ -1,17 +1,12 @@
 import { useState } from "react"
-import { clearData, setToken } from "~helpers/storage";
 import logo from "data-base64:~assets/img/octa.png";
 import { Box, Button, Stack, Text, Title, useMantineTheme } from '@mantine/core';
 import { Image } from '@mantine/core';
 import { keyframes } from '@emotion/react';
-import { OctaClient } from "@octaspace/sdk";
-import { wait } from "~helpers/wait";
 import { FaCircleCheck } from "react-icons/fa6";
 import { useNavigate } from "react-router-dom";
-import { getAPIToken, getOAuthToken } from "~helpers/auth";
-import { BsEmojiDizzy } from "react-icons/bs";
-import { NotifiyError } from "~components/notifiyerror";
-import { generateCodeVerifier, generateCodeChallenge, storePkceVerifier, consumePkceVerifier } from "~helpers/pkce";
+import { notifyError } from "~components/notify";
+import { send } from "~helpers/messages";
 import { Notifications } from "@mantine/notifications";
 
 const logoGlow = keyframes({
@@ -36,125 +31,17 @@ function Login() {
   const theme = useMantineTheme();
   const isDark = theme.colorScheme === 'dark';
 
-  async function save(apikey:string) {
-    try{
-      await clearData()
-      let octa = new OctaClient({ apiKey: apikey })
-      await octa.accounts.get()
-      setIsLoading(false)
-      setStatus(true)
-      await wait(1000)
-      await setToken(apikey);
-      navigate('/home')
-    }
-    catch(err:any){
-      setIsLoading(false)
-    }
-  }
-
-  async function authorize(redirect_url?: string){
-    try {
-      if (!redirect_url) {
-        setIsLoading(false);
-        NotifiyError('Auth Error: Authorization flow failed', <BsEmojiDizzy />);
-        return;
-      }
-
-      // Extract code from redirect URL using URLSearchParams
-      const url = new URL(redirect_url);
-      const code = url.searchParams.get('code');
-      
-      if (!code) {
-        setIsLoading(false);
-        NotifiyError('Auth Error: Authorization code not found', <BsEmojiDizzy />);
-        return;
-      }
-      
-      // Retrieve and consume the PKCE verifier
-      const codeVerifier = await consumePkceVerifier();
-      if (!codeVerifier) {
-        setIsLoading(false);
-        NotifiyError('Auth Error: PKCE verifier not found', <BsEmojiDizzy />);
-        return;
-      }
-      
-      // Send code and verifier to /oauth/token
-      const accessToken: string = await getOAuthToken(code, codeVerifier);
-      if (accessToken.length < 1) {
-        setIsLoading(false);
-        NotifiyError('Auth Error: Invalid token', <BsEmojiDizzy />);
-        return;
-      }
-      
-      // Use token at /api/v1/profiles/me
-      const apiToken: string = await getAPIToken(accessToken);
-      
-      // Save it and proceed
-      if (apiToken.length === 64) {
-        await save(apiToken);
-        return;
-      }
-      
-      // Show error if token is invalid
-      setIsLoading(false);
-      NotifiyError('Unexpected Error: Invalid Token', <BsEmojiDizzy />);
-    } catch (error) {
-      setIsLoading(false);
-      NotifiyError('Auth Error: Failed to complete authorization', <BsEmojiDizzy />);
-    }
-  }
-
+  // The background runs the flow: this popup may not survive the auth window.
   async function launchAuth() {
-    try {
-      setIsLoading(true);
-
-      // Generate PKCE verifier and challenge
-      const codeVerifier = generateCodeVerifier();
-      const codeChallenge = await generateCodeChallenge(codeVerifier);
-      
-      // Store the verifier for later use
-      await storePkceVerifier(codeVerifier);
-
-      if (process.env.PLASMO_BROWSER == "chrome") {
-        const redirectURL = chrome.identity.getRedirectURL();
-        const clientID = "AVKl5zoeH1R_OXqWlE2rbAn2JWBXSFflq0lcUnmy3y0";
-        
-        let authURL = "https://cube.octa.computer/oauth/authorize";
-        authURL += `?client_id=${clientID}`;
-        authURL += `&response_type=code`;
-        authURL += `&redirect_uri=${encodeURIComponent(redirectURL)}`;
-        authURL += `&code_challenge=${codeChallenge}`;
-        authURL += `&code_challenge_method=S256`;
-        authURL += `&scope=`;
-
-        return chrome.identity.launchWebAuthFlow({
-          interactive: true,
-          url: authURL,
-        }, authorize);
-      }
-      
-      if (process.env.PLASMO_BROWSER == "firefox") {
-        const redirectURL = browser.identity.getRedirectURL();
-        const clientID = "Bv0maVhVPpjbUehutq_frwhKpMYDI9W70P6C1nOGScQ";
-        
-        let authURL = "https://cube.octa.computer/oauth/authorize";
-        authURL += `?client_id=${clientID}`;
-        authURL += `&response_type=code`;
-        authURL += `&redirect_uri=${encodeURIComponent(redirectURL)}`;
-        authURL += `&code_challenge=${codeChallenge}`;
-        authURL += `&code_challenge_method=S256`;
-        authURL += `&scope=`;
-
-        const redirectResult = await browser.identity.launchWebAuthFlow({
-          interactive: true,
-          url: authURL,
-        });
-        return authorize(redirectResult);
-      }
-    } catch (error) {
-      setIsLoading(false);
-      NotifiyError('Auth Error: Failed to launch authentication', <BsEmojiDizzy />);
+    setIsLoading(true)
+    const res = await send({ type: "login" })
+    setIsLoading(false)
+    if (!res.ok) {
+      if (res.error !== "cancelled") notifyError(res.error)
+      return
     }
+    setStatus(true)
+    setTimeout(() => navigate('/home'), 600)
   }
 
   return (

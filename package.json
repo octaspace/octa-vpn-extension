@@ -7,27 +7,23 @@
   "scripts": {
     "dev": "plasmo dev --verbose",
     "typecheck": "tsc --noEmit",
-    "build": "tsc --noEmit && plasmo build",
-    "firefox": "tsc --noEmit && plasmo build --target=firefox-mv2 --hoist --zip",
-    "test": "plasmo test"
+    "build": "tsc --noEmit && vitest run && plasmo build",
+    "firefox": "tsc --noEmit && vitest run && plasmo build --target=firefox-mv2 --hoist --zip",
+    "test": "vitest run"
   },
   "dependencies": {
     "@emotion/react": "11.11.1",
     "@mantine/core": "6.0.21",
-    "@mantine/form": "^7.3.2",
     "@mantine/hooks": "6.0.21",
     "@mantine/notifications": "6.0.21",
     "@octaspace/sdk": "^0.1.1",
     "@phosphor-icons/react": "^2.1.10",
     "@plasmohq/storage": "1.8.0",
     "country-flag-icons": "^1.5.9",
-    "node-fetch": "2.6.7",
     "plasmo": "^0.90.5",
-    "pnpm": "^10.28.1",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-icons": "^4.12.0",
-    "react-remark": "^2.1.0",
     "react-router-dom": "^6.30.3"
   },
   "devDependencies": {
@@ -38,7 +34,8 @@
     "@types/react-dom": "18.2.7",
     "prettier": "3.0.2",
     "svgo": "^3.3.3",
-    "typescript": "5.8.3"
+    "typescript": "5.8.3",
+    "vitest": "^3.2.4"
   },
   "manifest": {
     "browser_specific_settings": {
@@ -49,11 +46,15 @@
     },
     "permissions": [
       "proxy",
-      "identity"
+      "identity",
+      "storage",
+      "alarms",
+      "privacy"
     ],
     "host_permissions": [
       "https://api.octa.space/*",
       "https://api.octa.computer/*",
+      "https://cube.octa.computer/*",
       "https://ifconfig.octa.computer/*"
     ],
     "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwJ9ASVnZJqzZQzGui/HMHhv7AIZPkvYLOYn258TQUWyOr/VJxJoJOH0oVzGeZQqQSQWj8ItuXJ/nHg5FCrQPq41YvfL3PpUbQlbMkudU3dLH8gCMrIpmbsHD5kYQnGLBiP9FULuM/A2MMHelYX3zJJ2g1sgw8bMp+NNVQGJhQNUyqf42OjyJvTJiu2WdCyvg7SA7WTmHSsNgNXreCxM4nZmbvmWAmfOJJxIJn+D/sgjn9sZdLlqUI25B3aEL6uIai6+PQ8qvk6aQonCSSiadO21pOePbqiXea6albBDoSBpIj/hryYiKV0GkFAiQjScozohvW2mehnt0lAm/YfaBkwIDAQAB"

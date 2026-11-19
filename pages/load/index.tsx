@@ -3,14 +3,11 @@ import { keyframes } from "@emotion/react";
 import logo from "data-base64:~assets/img/octa.png";
 import { Image } from '@mantine/core';
 import { useEffect, useState } from "react";
-import { updateBalance } from "~helpers/balance";
-import { NotifiyError } from "~components/notifiyerror";
+import { notify } from "~components/notify";
 import { RiGlobalLine } from "react-icons/ri";
 import type { VpnNode } from "@octaspace/sdk";
-import { secureStorage, storage } from "~helpers/storage";
-import { wait } from "~helpers/wait";
+import { getToken, setToken, storage } from "~helpers/storage";
 import { OctaAuthenticationError, OctaClient, OctaError } from "@octaspace/sdk";
-import { BsEmojiDizzy } from "react-icons/bs";
 import { LocalInfo } from "~helpers/localinfo";
 
 export type SelectedVPNNode = {
@@ -95,7 +92,7 @@ export function Load(){
       //fetch new data not before 1 hour
       if((Date.now()-timestamp)>3_600_000||nodeDataChunks==undefined||countryDataChunks==undefined||avgPrice==0.00){
         LocalInfo()
-        const octa = new OctaClient({ apiKey: await secureStorage.getItem("token") })
+        const octa = new OctaClient({ apiKey: await getToken() })
         let data:VpnNode[] = await octa.services.vpn.available()
         const avgTrafficPrice:number = parseFloat((data.reduce((sum, node) => sum + (node.traffic_price_ether), 0) / data.length).toFixed(2));
         await storage.setItem("avgPrice",avgTrafficPrice)
@@ -123,18 +120,18 @@ export function Load(){
     catch(err:any)
     {
       if(err instanceof OctaAuthenticationError){
-        await secureStorage.set("token", "")
+        await setToken("")
         await storage.setItem("authExpired", true)
       } else if(err instanceof OctaError){
-        NotifiyError('Network Error', <RiGlobalLine />)
+        notify('Network Error', <RiGlobalLine />)
       } else {
         console.error("loadNodes error:", err)
-        NotifiyError("Failed to load nodes", <BsEmojiDizzy />)
+        notify("Failed to load nodes")
       }
     }
     finally {
       // Always hide the loader — even on error
-      await wait(1000)
+      await new Promise((r) => setTimeout(r, 1000))
       setZIndexValue(-3)
     }
   }
@@ -149,7 +146,6 @@ export function Load(){
 
   useEffect(()=>{
     setZIndexValue(5)
-    updateBalance()
     loadNodes()
   }, [])
 

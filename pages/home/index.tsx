@@ -16,11 +16,9 @@ import { type NodeStorageData, storage } from "~helpers/storage";
 import { Load, type NodeDataType, type countryInfoType } from "~pages/load";
 import { Notifications } from "@mantine/notifications";
 import { FaServer } from "react-icons/fa6";
-import { BsEmojiDizzy } from "react-icons/bs";
 import { FlagIcon } from "./flagicon";
-import { proxy } from "~background";
-import { connect, disconnect } from "~helpers/connection";
-import { NotifiyError } from "~components/notifiyerror";
+import { connect } from "~helpers/connection";
+import { notify } from "~components/notify";
 import { useNavigate } from "react-router-dom";
 
 function Home() {
@@ -58,7 +56,7 @@ function Home() {
           )
         )
         if (!hasAffordable) {
-          NotifiyError("No affordable nodes available", <BsEmojiDizzy />)
+          notify("No affordable nodes available")
           closeList()
           return
         }
@@ -94,7 +92,7 @@ function Home() {
 
         // Guard against empty list — prevents % 0 and undefined access
         if (oldvalue.length === 0) {
-          NotifiyError("No affordable nodes in this country", <BsEmojiDizzy />)
+          notify("No affordable nodes in this country")
           closeList()
           return
         }
@@ -136,11 +134,9 @@ function Home() {
       closeList();
   }
 
-  const reconnect = async (node:number)=>{
-    if(proxyStatus=="Connected"||proxyStatus=="Connecting"){
-      await disconnect()
-      await connect(node)
-   }
+  // a new location while connected: the background replaces the session
+  const reconnect = (node:number)=>{
+    if(proxyStatus=="Connected"||proxyStatus=="Connecting") connect(node)
   }
 
   const getData = async () => {
@@ -155,12 +151,7 @@ function Home() {
     }
 
     setBalanceValue(await storage.getItem("balance"))
-    const currentProxyStatus = await storage.getItem<string>("proxyStatus")
-    if(currentProxyStatus==undefined){
-      await storage.setItem("proxyStatus", await proxy.getState())
-    } else {
-      setProxyStatus(currentProxyStatus)
-    }
+    setProxyStatus((await storage.getItem<string>("proxyStatus")) ?? "Disconnected")
     setcountryConnected(await storage.getItem("countryConnected"))
     setcountryLocal(await storage.getItem("countryLocal"))
     setcityConnected(await storage.getItem("cityConnected"))
@@ -249,6 +240,7 @@ function Home() {
             size="lg" 
             variant="transparent" 
             onClick={openSettings}
+            aria-label="Settings"
             sx={{ 
               color: isDark ? theme.colors.gray[5] : theme.colors.gray[6],
               transition: 'color 200ms ease, transform 200ms ease',
@@ -286,6 +278,8 @@ function Home() {
                 : isDark ? "gray.5" : "dark.3"
               }
               style={{ letterSpacing: 2 }}
+              role="status"
+              aria-live="polite"
             >
               {proxyStatus.toUpperCase()}
             </Text>

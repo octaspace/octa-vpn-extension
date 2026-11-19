@@ -1,4 +1,4 @@
-import fetch from 'node-fetch';
+import { IFCONFIG_URL } from './config';
 import { storage } from './storage';
 
 type InterfaceBody = {
@@ -13,7 +13,7 @@ export async function LocalInfo(){
         if(proxyStatus=="Connected"){
             return
         }
-        const response = await fetch("https://ifconfig.octa.computer",{method: 'GET',headers: {'X-OCTA-APP':'web-desktop'}});
+        const response = await fetch(IFCONFIG_URL,{method: 'GET',headers: {'X-OCTA-APP':'web-desktop'}});
         if(response.status==200){
             const data: InterfaceBody = await response.json();
             await storage.setItem("ipLocal",data.ip)

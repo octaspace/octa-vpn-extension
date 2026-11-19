@@ -1,11 +1,11 @@
 import { Box, Button, Group, Input, Stack, Switch, Text, UnstyledButton, useMantineTheme, useMantineColorScheme } from "@mantine/core";
-import * as CountryIcons from 'country-flag-icons/react/3x2'
 import { useEffect, useState } from "react";
 import { FaArrowLeft } from "react-icons/fa6";
 import { RiSearchLine } from "react-icons/ri";
 import { storage } from "~helpers/storage";
 import type { NodeDataType, countryInfoType } from "~pages/load";
 import { FcGlobe } from "react-icons/fc";
+import { FlagIcon } from "./flagicon";
 import { ArrowDownIcon as ArrowDown, ArrowUpIcon as ArrowUp } from "@phosphor-icons/react";
 
 interface ListParam {
@@ -154,7 +154,6 @@ interface ListParam {
                 </Group>
               </UnstyledButton>
               {sortedEntries.map(([country_Name, countryData]) => {
-                const CountryIconComponent = CountryIcons[countryData[0].country_iso];
                 return (
                   <UnstyledButton
                     key={country_Name}
@@ -171,7 +170,7 @@ interface ListParam {
                     <Group position="apart" w="100%" align="center">
                       <Group spacing="sm">
                         <Box style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <CountryIconComponent title={country_Name} style={{ width: '100%', height: 'auto', borderRadius: 3, objectFit: 'cover' }} />
+                          <FlagIcon country={countryData[0].country_iso} />
                         </Box>
                         <Text weight={500} size="sm" color={isDark ? "gray.3" : "dark.7"} style={{maxWidth:"150px",textOverflow:"ellipsis",whiteSpace:"nowrap",overflow:"hidden"}}>{country_Name}</Text>
                       </Group>
@@ -199,20 +198,19 @@ interface ListParam {
     const { colorScheme } = useMantineColorScheme();
     const isDark = colorScheme === 'dark';
 
-    const returnNodeData = (nodeId: number):NodeDataType => {
-      const selectedNode = nodeData?.find((node) => node.node_id === nodeId);
-      return selectedNode
-    }
+    const speeds = (nodeId: number) =>
+      nodeData?.find((node) => node.node_id === nodeId) ?? { download: "–", upload: "–" }
 
     const handleNodeClick = (nodeId: number) => {
         const selectedCountryData = countryInfo?.[countryName];
         const selectedNode = selectedCountryData?.find((node) => node.node_id === nodeId);
+        if (!selectedNode) return
         close(countryName, countryInfo, nodeData, false, nodeId, selectedNode.traffic_price_ether);
       }
 
     return (
       <>
-      {countryInfo[countryName]!=null ? <>
+      {countryInfo?.[countryName]!=null ? <>
               {Object.keys(countryInfo ?? {}).length === 0 ? (
           <>
             <Group position="center">
@@ -248,11 +246,11 @@ interface ListParam {
                   <Group spacing={8} noWrap>
                     <Group spacing={4} noWrap bg={isDark ? 'rgba(76, 175, 80, 0.1)' : 'rgba(76, 175, 80, 0.05)'} px={6} py={2} style={{ borderRadius: 4 }}>
                       <ArrowDown color={theme.colors.green[6]} weight="bold" size={14} />
-                      <Text size="xs" weight={600} color={isDark ? "gray.3" : "gray.7"}>{returnNodeData(node.node_id).download} <span style={{fontSize: '9px', opacity: 0.7}}>Mb</span></Text>
+                      <Text size="xs" weight={600} color={isDark ? "gray.3" : "gray.7"}>{speeds(node.node_id).download} <span style={{fontSize: '9px', opacity: 0.7}}>Mb</span></Text>
                     </Group>
                     <Group spacing={4} noWrap bg={isDark ? 'rgba(33, 150, 243, 0.1)' : 'rgba(33, 150, 243, 0.05)'} px={6} py={2} style={{ borderRadius: 4 }}>
                       <ArrowUp color={theme.colors.blue[6]} weight="bold" size={14} />
-                      <Text size="xs" weight={600} color={isDark ? "gray.3" : "gray.7"}>{returnNodeData(node.node_id).upload} <span style={{fontSize: '9px', opacity: 0.7}}>Mb</span></Text>
+                      <Text size="xs" weight={600} color={isDark ? "gray.3" : "gray.7"}>{speeds(node.node_id).upload} <span style={{fontSize: '9px', opacity: 0.7}}>Mb</span></Text>
                     </Group>
                   </Group>
                 </Group>

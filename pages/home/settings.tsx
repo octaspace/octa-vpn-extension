@@ -1,8 +1,8 @@
 import { Button, Group, Stack, Switch, Text, useMantineColorScheme, useMantineTheme } from "@mantine/core";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { disconnect } from "~helpers/connection";
-import { clearData, storage } from "~helpers/storage";
+import { send } from "~helpers/messages";
+import { storage } from "~helpers/storage";
 import { RiMoonClearLine, RiSunLine } from "react-icons/ri";
 
 function Settings() {
@@ -12,7 +12,7 @@ function Settings() {
   const theme = useMantineTheme();
   const isDark = colorScheme === 'dark';
 
-  const version = "v1.0.0"
+  const version = `v${chrome.runtime.getManifest().version}`
 
   async function loadValues() {
     setAdvancedView(await storage.getItem("advancedView"))
@@ -33,13 +33,7 @@ function Settings() {
   },[])
 
   const signout = async ()=>{
-    // Disconnect FIRST — needs token to call stopVPN server-side
-    const proxyStatus = await storage.getItem("proxyStatus")
-    if(proxyStatus=="Connected"||proxyStatus=="Connecting"){
-      await disconnect()
-    }
-    // Clear data AFTER disconnect completes
-    await clearData()
+    await send({ type: "signOut" })
     navigate('/login')
   }
 
