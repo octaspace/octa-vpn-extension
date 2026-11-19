@@ -4,6 +4,34 @@ import { ext } from "./platform"
 
 export type ProxyEndpoint = { host: string; port: number }
 
+/**
+ * The session's `config` for `http_proxy`: `host:port` or `http://host:port`
+ * (a string, as the API documents it), or `{ip, port}` as the node reports it.
+ * Anything else is no endpoint.
+ */
+export function parseProxyConfig(config: unknown): ProxyEndpoint | null {
+  let host: unknown
+  let port: unknown
+  if (config && typeof config === "object") {
+    ;({ ip: host, port } = config as { ip?: unknown; port?: unknown })
+  } else if (typeof config === "string") {
+    const m = /^(?:https?:\/\/)?(\[[0-9a-f:]+\]|[^\s:/]+):(\d{1,5})\/?$/i.exec(
+      config.trim()
+    )
+    if (m) [, host, port] = m
+  }
+  const p = Number(port)
+  if (
+    typeof host !== "string" ||
+    !host ||
+    !Number.isInteger(p) ||
+    p < 1 ||
+    p > 65535
+  )
+    return null
+  return { host: host.replace(/^\[|\]$/g, ""), port: p }
+}
+
 /** Who controls the browser's proxy: us (on or off), or someone else. */
 export type ProxyControl = "on" | "off" | "blocked"
 

@@ -4,7 +4,7 @@ import { send } from "./messages"
 
 // The popup's side of the session: the background runs it.
 
-export async function connect(nodeId: number): Promise<void> {
+export async function connect(nodeId: string): Promise<void> {
   const res = await send({ type: "connect", nodeId })
   if (!res.ok && res.error !== "cancelled") notifyError(res.error)
 }

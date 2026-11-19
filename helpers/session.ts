@@ -96,7 +96,7 @@ const sleep = (ms: number, signal: AbortSignal) =>
 
 async function balanceOk(client: Api): Promise<boolean> {
   const balance = await client.balance()
-  await storage.set("balance", balance.toFixed(3))
+  await storage.set("balance", balance.toFixed(2))
   return balance >= MIN_BALANCE
 }
 
@@ -121,7 +121,7 @@ async function teardown(error?: ErrorCode): Promise<void> {
 }
 
 async function startSession(
-  nodeId: number,
+  nodeId: string,
   signal: AbortSignal
 ): Promise<void> {
   if (!nodeId) throw new AppError("no_node")
@@ -167,7 +167,7 @@ async function startSession(
 }
 
 /** Connects to the node, replacing any session up. */
-export function connect(nodeId: number): Promise<Result> {
+export function connect(nodeId: string): Promise<Result> {
   starting?.abort()
   return serial(async () => {
     const ctrl = new AbortController()

@@ -18,6 +18,7 @@ import { Notifications } from "@mantine/notifications";
 import { FaServer } from "react-icons/fa6";
 import { FlagIcon } from "./flagicon";
 import { connect } from "~helpers/connection";
+import { bestNode } from "~helpers/nodes";
 import { notify } from "~components/notify";
 import { useNavigate } from "react-router-dom";
 
@@ -28,7 +29,7 @@ function Home() {
   const [openedList, { open:openList, close:closeList }] = useDisclosure(false);
   const [countryName, setcountryName] = useState("")
   const [country, setcountry] = useState("")
-  const [nodeId, setnodeId] = useState(0)
+  const [nodeId, setnodeId] = useState("")
   const [nodePrice, setnodePrice] = useState(0.00)
   const [proxyStatus, setProxyStatus] = useState("Disconnected")
   const [countryConnected, setcountryConnected] = useState("")
@@ -41,101 +42,38 @@ function Home() {
   const [nodeUpload, setNodeUpload] = useState("")
   const [advancedView, setAdvancedView] = useState(false)
 
-  const CloseModel = async (country:string,data:countryInfoType, nodeData:NodeDataType[], auto:boolean, nodeid?:number, node_price?:number) =>{
-    const avgPrice: number = await storage.getItem("avgPrice")
+  // A location picked in the list: the best node of every country, of one
+  // country, or the very node chosen in the manual view.
+  const CloseModel = async (country:string, data:countryInfoType, nodeData:NodeDataType[], auto:boolean, nodeid?:string) =>{
     const balance = parseFloat(balanceValue)
-
-    if(auto){
-        const countries = Object.keys(data)
-
-        // Pre-check: ensure at least one affordable node exists before looping
-        const hasAffordable = countries.some(c =>
-          data[c].some(node =>
-            node.traffic_price_ether <= avgPrice &&
-            node.traffic_price_ether <= balance
-          )
-        )
-        if (!hasAffordable) {
-          notify("No affordable nodes available")
-          closeList()
-          return
-        }
-
-        let eligibleNodes: typeof data[string] = []
-        let randomCountry = ""
-        while (eligibleNodes.length === 0) {
-          const idx = Math.floor(countries.length * Math.random())
-          randomCountry = countries[idx]
-          eligibleNodes = data[randomCountry].filter(
-            node => node.traffic_price_ether <= avgPrice && node.traffic_price_ether <= balance
-          )
-        }
-        const randomIndex = Math.floor(Math.random() * eligibleNodes.length);
-        const singleNodeData = nodeData.find(node => node.node_id === eligibleNodes[randomIndex].node_id)
-        if (!singleNodeData) return
-        const selectedNodeData : NodeStorageData = {
-          country_iso:data[randomCountry][0].country_iso,
-          country_name:randomCountry,
-          node_id:eligibleNodes[randomIndex].node_id,
-          traffic_price_ether:eligibleNodes[randomIndex].traffic_price_ether,
-          download_speed:singleNodeData.download,
-          upload_speed:singleNodeData.upload
-        }
-        await storage.setItem("selectedNodeData", selectedNodeData)
-        reconnect(eligibleNodes[randomIndex].node_id)
+    const candidates = Object.entries(data)
+      .filter(([name]) => auto || name === country)
+      .flatMap(([name, nodes]) => nodes.map((node) => {
+        const speed = nodeData.find((d) => d.node_number === node.node_number)
+        return { ...node, country_name: name, down: Number(speed?.download ?? 0), speed }
+      }))
+    const picked = !auto && advancedView
+      ? candidates.find((c) => c.node_number === nodeid)
+      : bestNode(candidates, balance)
+    closeList()
+    if (!picked) {
+      notify(auto ? "No affordable nodes available" : "No affordable nodes in this country")
+      return
     }
-    else{
-      if(!advancedView){
-        const oldvalue = data[country].filter(
-          value => value.traffic_price_ether <= avgPrice && value.traffic_price_ether <= balance
-        )
-
-        // Guard against empty list — prevents % 0 and undefined access
-        if (oldvalue.length === 0) {
-          notify("No affordable nodes in this country")
-          closeList()
-          return
-        }
-
-        let lastSelectedNodeIndex = await storage.getItem<number>('lastSelectedNodeIndex');
-        if (lastSelectedNodeIndex === undefined || lastSelectedNodeIndex >= oldvalue.length || countryName!=country) {
-          lastSelectedNodeIndex = 0;
-        }
-        const nextNodeIndex = (lastSelectedNodeIndex + 1) % oldvalue.length;
-        const singleNodeData = nodeData.find(node => node.node_id === oldvalue[nextNodeIndex].node_id)
-        if (!singleNodeData) return
-        const selectedNodeData : NodeStorageData = {
-          country_iso:oldvalue[nextNodeIndex].country_iso,
-          country_name:country,
-          node_id:oldvalue[nextNodeIndex].node_id,
-          traffic_price_ether:oldvalue[nextNodeIndex].traffic_price_ether,
-          download_speed:singleNodeData.download,
-          upload_speed:singleNodeData.upload
-        }
-        await storage.setItem("lastSelectedNodeIndex", nextNodeIndex)
-        await storage.setItem("selectedNodeData", selectedNodeData)
-        reconnect(oldvalue[nextNodeIndex].node_id)
-      }
-      else{
-        const singleNodeData = nodeData.find(node => node.node_id === nodeid)
-        if (!singleNodeData) return
-        const selectedNodeData : NodeStorageData = {
-          country_iso:data[country][0].country_iso,
-          country_name:country,
-          node_id:nodeid,
-          traffic_price_ether:node_price,
-          download_speed:singleNodeData.download,
-          upload_speed:singleNodeData.upload
-        }
-        await storage.setItem("selectedNodeData", selectedNodeData)
-        reconnect(nodeid)
-        }
-      }
-      closeList();
+    const selectedNodeData: NodeStorageData = {
+      country_iso: picked.country_iso,
+      country_name: picked.country_name,
+      node_number: picked.node_number,
+      price: picked.price,
+      download_speed: picked.speed?.download ?? "",
+      upload_speed: picked.speed?.upload ?? ""
+    }
+    await storage.setItem("selectedNodeData", selectedNodeData)
+    reconnect(picked.node_number)
   }
 
   // a new location while connected: the background replaces the session
-  const reconnect = (node:number)=>{
+  const reconnect = (node:string)=>{
     if(proxyStatus=="Connected"||proxyStatus=="Connecting") connect(node)
   }
 
@@ -144,8 +82,8 @@ function Home() {
     if(selectedNodeData){
       setcountryName(selectedNodeData.country_name)
       setcountry(selectedNodeData.country_iso)
-      setnodeId(selectedNodeData.node_id)
-      setnodePrice(selectedNodeData.traffic_price_ether)
+      setnodeId(selectedNodeData.node_number)
+      setnodePrice(selectedNodeData.price)
       setNodeDownload(selectedNodeData.download_speed)
       setNodeUpload(selectedNodeData.upload_speed)
     }
@@ -181,8 +119,8 @@ function Home() {
       const d: NodeStorageData = key.newValue
       setcountryName(d.country_name)
       setcountry(d.country_iso)
-      setnodeId(d.node_id)
-      setnodePrice(d.traffic_price_ether)
+      setnodeId(d.node_number)
+      setnodePrice(d.price)
       setNodeDownload(d.download_speed)
       setNodeUpload(d.upload_speed)
     }}
@@ -263,7 +201,7 @@ function Home() {
               animation: `${glowPulse} 3.5s ease-in-out infinite`,
             }}
           >OctaVPN</Title>
-          <Text weight={700} color={isDark ? "gray.3" : "gray.7"}>{balanceValue} Ø</Text>
+          <Text weight={700} color={isDark ? "gray.3" : "gray.7"}>${balanceValue}</Text>
         </Group>
 
         <Stack spacing="xl" align="center" style={{ flexGrow: 1, justifyContent: "center" }}>
@@ -286,7 +224,7 @@ function Home() {
           </Group>
 
           <Group position="center">
-            <HomeButton node_id={nodeId} />
+            <HomeButton node_number={nodeId} />
           </Group>
 
           <Text size="sm" weight={500} color={isDark ? "gray.5" : "dark.3"} align="center" mt={-10} style={{ letterSpacing: 0.5, fontVariantNumeric: 'tabular-nums', minHeight: 20 }}>
@@ -357,7 +295,7 @@ function Home() {
 
             <Paper shadow="sm" radius="md" p="xs" withBorder bg={isDark ? theme.colors.dark[6] : "white"} style={{ textAlign: 'center' }}>
               <Group position="center" spacing={4}>
-                <Text size="sm" weight={700} color={theme.colors.cube[5]}>Ø</Text>
+                <Text size="sm" weight={700} color={theme.colors.cube[5]}>$</Text>
                 <Text size="sm" weight={600}>{isConnected ? Number(nodePrice).toFixed(4) : "0"}</Text>
               </Group>
               <Text size="xs" color="dimmed">Cost/GB</Text>

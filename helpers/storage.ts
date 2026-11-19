@@ -5,10 +5,10 @@ export const storage = new Storage({area:"local"})
 export const secureStorage = new SecureStorage({area:"local"})
 
 export type NodeStorageData ={
-    node_id:number
+    node_number:string
     country_name:string
     country_iso:string
-    traffic_price_ether:number
+    price:number
     download_speed:string
     upload_speed:string
 }
@@ -44,8 +44,8 @@ export async function clearData() {
         country_name:"",
         download_speed:"0",
         upload_speed:"0",
-        node_id:0,
-        traffic_price_ether:0
+        node_number:"",
+        price:0
     }
 
     // Clean up all chunk keys before resetting counters
@@ -64,7 +64,7 @@ export async function clearData() {
     await Promise.all([
         setToken(""),
         storage.set("nodeInfo", ""),
-        storage.set("balance", "0.000"),
+        storage.set("balance", "0.00"),
         storage.set("last_interacted", 0),
         storage.set("countryInfoChunks", 0),
         storage.set("nodeInfoChunks", 0),
@@ -75,8 +75,6 @@ export async function clearData() {
         storage.set("ipConnected", ""),
         storage.set("ipLocal", ""),
         storage.set("advancedView", false),
-        storage.set("maxPrice", 0.00),
-        storage.set("avgPrice", 0.00),
         storage.set("lastSelectedNodeIndex", 0),
         storage.set("selectedNodeData", nodeStorageData),
         storage.set("proxyStatus", "Disconnected"),

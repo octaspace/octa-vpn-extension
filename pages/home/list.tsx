@@ -9,14 +9,14 @@ import { FlagIcon } from "./flagicon";
 import { ArrowDownIcon as ArrowDown, ArrowUpIcon as ArrowUp } from "@phosphor-icons/react";
 
 interface ListParam {
-    close(country: string, data: countryInfoType, nodeData:NodeDataType[], auto:boolean, nodeid:number, node_price:number): void;
+    close(country: string, data: countryInfoType, nodeData:NodeDataType[], auto:boolean, nodeid?:string): void;
   }
 
   interface NodeListParam {
     countryName:string
     nodeData:NodeDataType[]
     countryInfo:countryInfoType
-    close(countryName: string, data: countryInfoType, nodeData:NodeDataType[], auto:boolean, nodeid:number, node_price:number): void;
+    close(countryName: string, data: countryInfoType, nodeData:NodeDataType[], auto:boolean, nodeid?:string): void;
   }
   
   export function List({ close }: ListParam) {
@@ -28,12 +28,10 @@ interface ListParam {
     const [nodeData, setNodeData] = useState<NodeDataType[] | undefined>(undefined);
     const [advancedView, setAdvancedView] = useState(false)
     const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
-    const [avgPrice, setAvgPrice] = useState(0.00);
     const [searchQuery, setSearchQuery] = useState('');
 
     async function loadValues() {
       setAdvancedView(await storage.getItem("advancedView"))
-      setAvgPrice(await storage.getItem("avgPrice"))
     }
 
     async function setAdvView(value:boolean) {
@@ -85,7 +83,6 @@ interface ListParam {
     }, []);
   
     const sortedEntries = Object.entries(countryInfo ?? {})
-  .filter(([countryName, countryData]) => countryData[0].traffic_price_ether <= avgPrice || advancedView)
   .filter(([countryName]) => countryName.toLowerCase().includes(searchQuery.toLowerCase()))
   .sort(([countryA], [countryB]) => countryA.localeCompare(countryB));
 
@@ -98,7 +95,7 @@ interface ListParam {
         {Object.keys(countryInfo ?? {}).length === 0 ? (
           <>
             <Group position="center">
-              <Text c={isDark ? "dimmed" : "gray.6"}>No Servers Available</Text>
+              <Text c={isDark ? "dimmed" : "gray.6"} align="center" size="sm">No nodes offer the browser VPN right now. Try again later.</Text>
             </Group>
           </>
         ) : (
@@ -140,7 +137,7 @@ interface ListParam {
                   '&:hover': { backgroundColor: isDark ? theme.colors.dark[5] : theme.colors.gray[1] }
                 })}
                 onClick={() => {
-                  close("countryName", countryInfo ,nodeData, true, 0, 0)
+                  close("", countryInfo ,nodeData, true)
                 }}
               >
                 <Group position="apart" w="100%" align="center">
@@ -148,9 +145,9 @@ interface ListParam {
                     <Box style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <FcGlobe size="1.2rem" />
                     </Box>
-                    <Text weight={600} size="sm" color={isDark ? "gray.2" : "dark.8"}>Random</Text>
+                    <Text weight={600} size="sm" color={isDark ? "gray.2" : "dark.8"}>Best available</Text>
                   </Group>
-                  <Text size="xs" weight={500} color={isDark ? "cube.4" : "cube.6"}>Lowest Price</Text>
+                  <Text size="xs" weight={500} color={isDark ? "cube.4" : "cube.6"}>Best for me</Text>
                 </Group>
               </UnstyledButton>
               {sortedEntries.map(([country_Name, countryData]) => {
@@ -164,7 +161,7 @@ interface ListParam {
                     })}
                     onClick={() => {
                       advancedView ? handleCountryClick(country_Name) :
-                      close(country_Name, countryInfo ,nodeData, false, 0, 0)
+                      close(country_Name, countryInfo ,nodeData, false)
                     }}
                   >
                     <Group position="apart" w="100%" align="center">
@@ -174,7 +171,7 @@ interface ListParam {
                         </Box>
                         <Text weight={500} size="sm" color={isDark ? "gray.3" : "dark.7"} style={{maxWidth:"150px",textOverflow:"ellipsis",whiteSpace:"nowrap",overflow:"hidden"}}>{country_Name}</Text>
                       </Group>
-                      <Text size="xs" weight={600} color={isDark ? "gray.5" : "dark.3"} style={{ fontVariantNumeric: 'tabular-nums' }}>{(countryData[0].traffic_price_ether).toString()} Ø</Text>
+                      <Text size="xs" weight={600} color={isDark ? "gray.5" : "dark.3"} style={{ fontVariantNumeric: 'tabular-nums' }}>from ${Math.min(...countryData.map((n) => n.price)).toFixed(4)}/GB</Text>
                     </Group>
                   </UnstyledButton>
                 );
@@ -198,14 +195,14 @@ interface ListParam {
     const { colorScheme } = useMantineColorScheme();
     const isDark = colorScheme === 'dark';
 
-    const speeds = (nodeId: number) =>
-      nodeData?.find((node) => node.node_id === nodeId) ?? { download: "–", upload: "–" }
+    const speeds = (nodeId: string) =>
+      nodeData?.find((node) => node.node_number === nodeId) ?? { download: "–", upload: "–" }
 
-    const handleNodeClick = (nodeId: number) => {
+    const handleNodeClick = (nodeId: string) => {
         const selectedCountryData = countryInfo?.[countryName];
-        const selectedNode = selectedCountryData?.find((node) => node.node_id === nodeId);
+        const selectedNode = selectedCountryData?.find((node) => node.node_number === nodeId);
         if (!selectedNode) return
-        close(countryName, countryInfo, nodeData, false, nodeId, selectedNode.traffic_price_ether);
+        close(countryName, countryInfo, nodeData, false, nodeId);
       }
 
     return (
@@ -227,8 +224,8 @@ interface ListParam {
             </Group>
             {countryInfo[countryName].map((node) => (
               <UnstyledButton
-                key={node.node_id}
-                onClick={() => handleNodeClick(node.node_id)}
+                key={node.node_number}
+                onClick={() => handleNodeClick(node.node_number)}
                 sx={(theme) => ({
                   display: 'flex', width: '100%',
                   borderWidth: 1, borderColor: isDark ? theme.colors.dark[5] : theme.colors.gray[3], borderStyle: 'solid', 
@@ -242,15 +239,15 @@ interface ListParam {
                 })}
               >
                 <Group position="apart" w="100%" align="center">
-                  <Text weight={600} size="sm" color={isDark ? "gray.2" : "dark.8"}>Node #{node.node_id}</Text>
+                  <Text weight={600} size="sm" color={isDark ? "gray.2" : "dark.8"}>{node.node_number}</Text>
                   <Group spacing={8} noWrap>
                     <Group spacing={4} noWrap bg={isDark ? 'rgba(76, 175, 80, 0.1)' : 'rgba(76, 175, 80, 0.05)'} px={6} py={2} style={{ borderRadius: 4 }}>
                       <ArrowDown color={theme.colors.green[6]} weight="bold" size={14} />
-                      <Text size="xs" weight={600} color={isDark ? "gray.3" : "gray.7"}>{speeds(node.node_id).download} <span style={{fontSize: '9px', opacity: 0.7}}>Mb</span></Text>
+                      <Text size="xs" weight={600} color={isDark ? "gray.3" : "gray.7"}>{speeds(node.node_number).download} <span style={{fontSize: '9px', opacity: 0.7}}>Mb</span></Text>
                     </Group>
                     <Group spacing={4} noWrap bg={isDark ? 'rgba(33, 150, 243, 0.1)' : 'rgba(33, 150, 243, 0.05)'} px={6} py={2} style={{ borderRadius: 4 }}>
                       <ArrowUp color={theme.colors.blue[6]} weight="bold" size={14} />
-                      <Text size="xs" weight={600} color={isDark ? "gray.3" : "gray.7"}>{speeds(node.node_id).upload} <span style={{fontSize: '9px', opacity: 0.7}}>Mb</span></Text>
+                      <Text size="xs" weight={600} color={isDark ? "gray.3" : "gray.7"}>{speeds(node.node_number).upload} <span style={{fontSize: '9px', opacity: 0.7}}>Mb</span></Text>
                     </Group>
                   </Group>
                 </Group>

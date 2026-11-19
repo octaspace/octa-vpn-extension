@@ -50,3 +50,40 @@ describe("proxyControl (Chrome)", () => {
     expect(proxyControl("not_controllable", {})).toBe("blocked")
   })
 })
+
+describe("parseProxyConfig", () => {
+  it("takes host:port, a URL and the node's object", async () => {
+    const { parseProxyConfig } = await import("~helpers/proxy")
+    expect(parseProxyConfig("203.0.113.7:3128")).toEqual({
+      host: "203.0.113.7",
+      port: 3128
+    })
+    expect(parseProxyConfig("http://203.0.113.7:3128/")).toEqual({
+      host: "203.0.113.7",
+      port: 3128
+    })
+    expect(parseProxyConfig({ ip: "203.0.113.7", port: 3128 })).toEqual({
+      host: "203.0.113.7",
+      port: 3128
+    })
+    expect(parseProxyConfig("[2001:db8::1]:8080")).toEqual({
+      host: "2001:db8::1",
+      port: 8080
+    })
+  })
+
+  it("refuses what is not a proxy", async () => {
+    const { parseProxyConfig } = await import("~helpers/proxy")
+    for (const bad of [
+      null,
+      undefined,
+      "",
+      "[Interface]\nPrivateKey = x",
+      "vless://x@y:443",
+      "host:99999",
+      { ip: "h" }
+    ]) {
+      expect(parseProxyConfig(bad)).toBeNull()
+    }
+  })
+})

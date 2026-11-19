@@ -1,7 +1,8 @@
 import {
   OctaAuthenticationError,
   OctaError,
-  OctaNotFoundError
+  OctaNotFoundError,
+  OctaValidationError
 } from "@octaspace/sdk"
 
 /** What went wrong, as the popup explains it. Shared by background and popup. */
@@ -32,6 +33,10 @@ export function toErrorCode(err: unknown): ErrorCode {
     return "cancelled"
   if (err instanceof OctaAuthenticationError) return "auth_expired"
   if (err instanceof OctaNotFoundError) return "node_unavailable"
+  // 400 on start: "Insufficient balance", "Node not available", a failed check…
+  if (err instanceof OctaValidationError) {
+    return /balance/i.test(err.message) ? "low_balance" : "node_unavailable"
+  }
   if (err instanceof OctaError) return "network"
   return "unknown"
 }

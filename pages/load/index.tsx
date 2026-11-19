@@ -5,20 +5,20 @@ import { Image } from '@mantine/core';
 import { useEffect, useState } from "react";
 import { notify } from "~components/notify";
 import { RiGlobalLine } from "react-icons/ri";
-import type { VpnNode } from "@octaspace/sdk";
 import { getToken, setToken, storage } from "~helpers/storage";
-import { OctaAuthenticationError, OctaClient, OctaError } from "@octaspace/sdk";
-import { LocalInfo } from "~helpers/localinfo";
+import { OctaAuthenticationError, OctaError } from "@octaspace/sdk";
+import { createApi } from "~helpers/octa";
+import { NODES_TTL_MS } from "~helpers/config";
 
 export type SelectedVPNNode = {
-  node_id: number;
+  node_number: string;
   country: string;
   country_iso: string;
-  traffic_price_ether: number;
+  price: number;
 };
 
 export type NodeDataType = {
-  node_id: number;
+  node_number: string;
   download:string;
   upload:string;
 };
@@ -26,8 +26,8 @@ export type NodeDataType = {
 
 export type countryInfoType = { 
   [country: string]: { 
-    node_id: number; 
-    traffic_price_ether: number 
+    node_number: string; 
+    price: number 
     country_iso: string 
   }[]}
 
@@ -50,13 +50,13 @@ export function Load(){
 
   async function saveCountryData(selectedData: SelectedVPNNode[]) {
     let groupedData: countryInfoType = selectedData.reduce((acc, node) => {
-      const { country, node_id, traffic_price_ether, country_iso } = node;
+      const { country, node_number, price, country_iso } = node;
       acc[country] = acc[country] || [];
-      acc[country].push({ node_id, traffic_price_ether, country_iso });
+      acc[country].push({ node_number, price, country_iso });
       return acc;
     }, {});
     for (const country in groupedData) {
-      groupedData[country].sort((a, b) => a.traffic_price_ether - b.traffic_price_ether);
+      groupedData[country].sort((a, b) => a.price - b.price);
     }
     const countryKeys = Object.keys(groupedData);
     const countryPerChunk = 1;
@@ -85,37 +85,25 @@ export function Load(){
 
   async function loadNodes() {
     try{
-      let timestamp:number = await storage.getItem("last_interacted")
-      let nodeDataChunks = await storage.getItem("nodeInfoChunks")
-      let countryDataChunks = await storage.getItem("countryInfoChunks")
-      let avgPrice:number = await storage.getItem("avgPrice")
-      //fetch new data not before 1 hour
-      if((Date.now()-timestamp)>3_600_000||nodeDataChunks==undefined||countryDataChunks==undefined||avgPrice==0.00){
-        LocalInfo()
-        const octa = new OctaClient({ apiKey: await getToken() })
-        let data:VpnNode[] = await octa.services.vpn.available()
-        const avgTrafficPrice:number = parseFloat((data.reduce((sum, node) => sum + (node.traffic_price_ether), 0) / data.length).toFixed(2));
-        await storage.setItem("avgPrice",avgTrafficPrice)
-        // Clear stale chunks before saving fresh data
+      const api = createApi(await getToken())
+      const [balance, geo] = await Promise.all([api.balance(), api.geo().catch(() => null)])
+      await storage.setItem("balance", balance.toFixed(2))
+      // the real address: the API is never proxied
+      if (geo) {
+        await storage.setItem("ipLocal", geo.ip)
+        await storage.setItem("countryLocal", geo.country)
+        await storage.setItem("cityLocal", geo.city)
+      }
+      // with a key the listing is at most 10 s old: no point keeping it long
+      const timestamp: number = (await storage.getItem("last_interacted")) ?? 0
+      if (Date.now() - timestamp > NODES_TTL_MS || (await storage.getItem("nodeInfoChunks")) == undefined) {
+        const nodes = await api.nodes()
         await clearOldChunks("countryInfo", "countryInfoChunks")
         await clearOldChunks("nodeInfo", "nodeInfoChunks")
-        let countryData: SelectedVPNNode[] = data.map(node => ({
-          node_id: node.node_id,
-          country: node.country,
-          country_iso: node.country_iso.toUpperCase(),
-          traffic_price_ether: parseFloat((node.traffic_price_ether).toFixed(4))
-        }));
-        let nodeData: NodeDataType[] = data.map(node => ({
-          node_id: node.node_id,
-          download: Number(node.net_down_mbits / 125_000).toFixed(0),
-          upload: Number(node.net_up_mbits / 125_000).toFixed(0),
-        }));
-        await saveCountryData(countryData)
-        await saveNodeData(nodeData)
-        let balance = ((await octa.accounts.balance()).balance * 1e-18).toFixed(3)
-        await storage.setItem("balance",balance)
+        await saveCountryData(nodes.map(({ node_number, country, country_iso, price }) => ({ node_number, country, country_iso, price })))
+        await saveNodeData(nodes.map((n) => ({ node_number: n.node_number, download: String(n.down), upload: String(n.up) })))
+        await storage.setItem("last_interacted", Date.now())
       }
-      await storage.setItem("last_interacted",Date.now())
     }
     catch(err:any)
     {

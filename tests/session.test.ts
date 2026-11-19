@@ -49,8 +49,8 @@ beforeEach(() => {
 
 describe("session", () => {
   it("connects: session started, proxy on, status Connected", async () => {
-    expect(await connect(42)).toEqual({ ok: true })
-    expect(api.start).toHaveBeenCalledWith(42)
+    expect(await connect("7KQ4-M2XD-4")).toEqual({ ok: true })
+    expect(api.start).toHaveBeenCalledWith("7KQ4-M2XD-4")
     expect(proxy.on).toBe(true)
     expect(store.get("proxyStatus")).toBe("Connected")
     expect(store.get("openSessions")).toEqual(["uuid-1"])
@@ -58,7 +58,10 @@ describe("session", () => {
 
   it("refuses a low balance before starting anything", async () => {
     api.balance.mockResolvedValueOnce(0)
-    expect(await connect(42)).toEqual({ ok: false, error: "low_balance" })
+    expect(await connect("7KQ4-M2XD-4")).toEqual({
+      ok: false,
+      error: "low_balance"
+    })
     expect(api.start).not.toHaveBeenCalled()
     expect(store.get("proxyStatus")).toBe("Disconnected")
   })
@@ -71,7 +74,10 @@ describe("session", () => {
       city: "",
       country: ""
     })
-    expect(await connect(42)).toEqual({ ok: false, error: "node_unavailable" })
+    expect(await connect("7KQ4-M2XD-4")).toEqual({
+      ok: false,
+      error: "node_unavailable"
+    })
     expect(api.stop).toHaveBeenCalledWith("uuid-1")
     expect(store.get("openSessions")).toEqual([])
     expect(proxy.on).toBe(false)
@@ -92,7 +98,7 @@ describe("session", () => {
             })
         })
     )
-    const pending = connect(42)
+    const pending = connect("7KQ4-M2XD-4")
     await vi.waitFor(() => expect(api.info).toHaveBeenCalled())
     const stopped = disconnect()
     release()
@@ -104,18 +110,18 @@ describe("session", () => {
   })
 
   it("a stop that failed is retried before the next start", async () => {
-    await connect(42)
+    await connect("7KQ4-M2XD-4")
     api.stop.mockRejectedValueOnce(new Error("offline"))
     await disconnect()
     expect(store.get("openSessions")).toEqual(["uuid-1"])
     api.start.mockResolvedValueOnce("uuid-2")
-    await connect(7)
+    await connect("B7EY-BY18-3")
     expect(api.stop).toHaveBeenLastCalledWith("uuid-1")
     expect(store.get("openSessions")).toEqual(["uuid-2"])
   })
 
   it("watchdog: a session gone on the node takes the proxy down", async () => {
-    await connect(42)
+    await connect("7KQ4-M2XD-4")
     api.info.mockRejectedValueOnce(
       new OctaNotFoundError("Session not found", 404)
     )

@@ -5,10 +5,10 @@ import { connect, disconnect } from "~helpers/connection";
 import { storage } from "~helpers/storage";
 
 interface HomeButtonProps{
-    node_id:number
+    node_number:string
 }
 
-export function HomeButton({node_id}:HomeButtonProps){
+export function HomeButton({node_number}:HomeButtonProps){
     const [Status, setStatus] = useState("")
     const [hovered, setHovered] = useState(false)
     const theme = useMantineTheme()
@@ -55,7 +55,7 @@ export function HomeButton({node_id}:HomeButtonProps){
             // Connecting: a click cancels the start
             onClick={()=>{
                 if(Status === "Disconnecting") return
-                Status === "Disconnected" ? connect(node_id) : disconnect()
+                Status === "Disconnected" ? connect(node_number) : disconnect()
             }}
             aria-label={Status === "Disconnected" ? "Connect" : Status === "Connecting" ? "Cancel connecting" : "Disconnect"}
             onMouseEnter={() => setHovered(true)}

@@ -16,7 +16,7 @@
     "@mantine/core": "6.0.21",
     "@mantine/hooks": "6.0.21",
     "@mantine/notifications": "6.0.21",
-    "@octaspace/sdk": "^0.1.1",
+    "@octaspace/sdk": "file:vendor/octaspace-sdk-next-7906ca2.tgz",
     "@phosphor-icons/react": "^2.1.10",
     "@plasmohq/storage": "1.8.0",
     "country-flag-icons": "^1.5.9",
@@ -53,9 +53,7 @@
     ],
     "host_permissions": [
       "https://api.octa.space/*",
-      "https://api.octa.computer/*",
-      "https://console.octa.space/*",
-      "https://ifconfig.octa.computer/*"
+      "https://console.octa.space/*"
     ],
     "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwJ9ASVnZJqzZQzGui/HMHhv7AIZPkvYLOYn258TQUWyOr/VJxJoJOH0oVzGeZQqQSQWj8ItuXJ/nHg5FCrQPq41YvfL3PpUbQlbMkudU3dLH8gCMrIpmbsHD5kYQnGLBiP9FULuM/A2MMHelYX3zJJ2g1sgw8bMp+NNVQGJhQNUyqf42OjyJvTJiu2WdCyvg7SA7WTmHSsNgNXreCxM4nZmbvmWAmfOJJxIJn+D/sgjn9sZdLlqUI25B3aEL6uIai6+PQ8qvk6aQonCSSiadO21pOePbqiXea6albBDoSBpIj/hryYiKV0GkFAiQjScozohvW2mehnt0lAm/YfaBkwIDAQAB"
   }

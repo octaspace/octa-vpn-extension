@@ -5,7 +5,7 @@ import type { ErrorCode } from "./errors"
 import { ext } from "./platform"
 
 export type Request =
-  | { type: "connect"; nodeId: number }
+  | { type: "connect"; nodeId: string }
   | { type: "disconnect" }
   | { type: "login" }
   | { type: "loginWithKey"; key: string }
