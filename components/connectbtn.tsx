@@ -52,10 +52,12 @@ export function HomeButton({node_id}:HomeButtonProps){
     return(
         <>
         <UnstyledButton
+            // Connecting: a click cancels the start
             onClick={()=>{
-                if(Status === "Connecting") return
+                if(Status === "Disconnecting") return
                 Status === "Disconnected" ? connect(node_id) : disconnect()
             }}
+            aria-label={Status === "Disconnected" ? "Connect" : Status === "Connecting" ? "Cancel connecting" : "Disconnect"}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
             style={{ transition: 'transform 150ms ease', transform: hovered ? 'scale(1.04)' : 'scale(1)' }}

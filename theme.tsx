@@ -30,6 +30,9 @@ export function ThemeProvider({ emotionCache, children, ...props }: Props) {
             backgroundColor: theme.colorScheme === 'dark' ? theme.colors.dark[7] : theme.white,
             color: theme.colorScheme === 'dark' ? theme.colors.dark[0] : theme.black,
           },
+          '@media (prefers-reduced-motion: reduce)': {
+            '*, *::before, *::after': { animation: 'none !important', transition: 'none !important' },
+          },
         }),
       }}
       emotionCache={emotionCache} {...props}>

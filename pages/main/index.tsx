@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { initSecureStorage, tokenExists } from "~helpers/storage";
+import { tokenExists } from "~helpers/storage";
 import { Loader } from '@mantine/core';
 import { useNavigate } from 'react-router-dom';
 
@@ -8,7 +8,6 @@ function Main() {
 
   useEffect(() => {
     const fetchData = async () => {
-      await initSecureStorage();
       if(await tokenExists()){
         navigate('/home') 
       }

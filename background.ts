@@ -1,11 +1,50 @@
-import { ProxyService } from "~helpers/proxyService";
-import { storage } from "~helpers/storage";
+import { login } from "~helpers/auth"
+import { WATCHDOG_ALARM } from "~helpers/config"
+import { toErrorCode } from "~helpers/errors"
+import type { Request, Response } from "~helpers/messages"
+import { ext } from "~helpers/platform"
+import { onProxyError } from "~helpers/proxy"
+import { check, connect, disconnect } from "~helpers/session"
+import { clearData } from "~helpers/storage"
 
-export let proxy:ProxyService = new ProxyService;
+async function handle(request: Request): Promise<Response> {
+  switch (request.type) {
+    case "connect":
+      return connect(request.nodeId)
+    case "disconnect":
+      return disconnect()
+    case "login":
+      try {
+        await login()
+        return { ok: true }
+      } catch (err) {
+        return { ok: false, error: toErrorCode(err) }
+      }
+    case "signOut":
+      // stop the session while the key is still there
+      await disconnect()
+      await clearData()
+      return { ok: true }
+  }
+}
 
-;(async () => {
-    const state = await proxy.getState()
-    await storage.setItem("proxyStatus", state)
-})()
+ext.runtime.onMessage.addListener((request: Request, sender, sendResponse) => {
+  if (sender.id !== ext.runtime.id) return false
+  handle(request).then(sendResponse)
+  return true // the response is async
+})
 
-proxy.updateState()
+ext.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === WATCHDOG_ALARM) check()
+})
+
+// A dead node shows up as proxy errors first: check now, not at the next tick.
+let pending: ReturnType<typeof setTimeout> | undefined
+onProxyError(() => {
+  clearTimeout(pending)
+  pending = setTimeout(check, 3_000)
+})
+
+// Every start of the worker or the browser: a proxy left on with its session
+// gone would cut the browser off the internet.
+check()

@@ -13,28 +13,26 @@ export type NodeStorageData ={
     upload_speed:string
 }
 
-export async function initSecureStorage()  {
-    await secureStorage.setPassword('Ba7_9/bW8{7**T')
+// Obfuscation, not protection: the password ships with the code. The key is
+// readable by this extension only either way (storage.local).
+let passwordSet: Promise<void> | undefined
+function ready() {
+    passwordSet ??= secureStorage.setPassword('Ba7_9/bW8{7**T')
+    return passwordSet
 }
 
 export async function setToken(token: string)  {
+    await ready()
     await secureStorage.set("token", token)
 }
 
-export async function getToken() {
+export async function getToken(): Promise<string | undefined> {
+    await ready()
     return await secureStorage.get("token")
 }
 
 export async function tokenExists() {
-    const token = await getToken()
-    if(token==undefined){
-        return false
-    }
-    if(token.length==64){
-        return true
-    }
-
-    return false
+    return (await getToken())?.length === 64
 }
 
 export async function clearData() {
@@ -61,7 +59,7 @@ export async function clearData() {
 
     // Clear all known keys in parallel
     await Promise.all([
-        secureStorage.set("token", ""),
+        setToken(""),
         storage.set("nodeInfo", ""),
         storage.set("balance", "0.000"),
         storage.set("last_interacted", 0),
@@ -84,5 +82,7 @@ export async function clearData() {
         storage.set("vpn_city", ""),
         storage.set("vpn_country", ""),
         storage.set("authExpired", false),
+        storage.set("openSessions", []),
+        storage.set("lastError", ""),
     ])
 }
