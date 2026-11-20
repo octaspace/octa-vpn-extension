@@ -21,7 +21,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@octaspace/sdk": "file:vendor/octaspace-sdk-next-7906ca2.tgz",
+    "@octaspace/sdk": "file:vendor/octaspace-sdk-7906ca2.tgz",
     "@plasmohq/storage": "1.8.0",
     "d3-geo": "^3.1.1",
     "plasmo": "^0.90.5",
