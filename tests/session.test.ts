@@ -150,7 +150,7 @@ describe("session", () => {
     await disconnect()
     expect(store.get("openSessions")).toEqual(["uuid-1"])
     api.start.mockResolvedValueOnce("uuid-2")
-    await connect("B7EY-BY18-3")
+    await connect("3HW9-P6TR-8")
     expect(api.stop).toHaveBeenLastCalledWith("uuid-1")
     expect(store.get("openSessions")).toEqual(["uuid-2"])
   })
@@ -185,7 +185,7 @@ describe("fresh install", () => {
   })
 })
 
-describe("start and watch, as the Android app does", () => {
+describe("start and watch", () => {
   const node = {
     node_number: "7KQ4-M2XD-4",
     price: 2,

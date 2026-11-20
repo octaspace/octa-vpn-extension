@@ -70,8 +70,8 @@ describe("locations", () => {
       country: "Canada",
       price: 0.0001,
       down: 489,
-      lat: 45.31,
-      lon: -73.88
+      lat: 45.5,
+      lon: -73.57
     }),
     node({
       node_number: "DE2",
