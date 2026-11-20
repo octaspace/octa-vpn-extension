@@ -45,7 +45,7 @@ The dashboard issues the extension an API key of your account. It is listed in t
 
 ## What you pay
 
-| | |
+| Topic | How it works |
 | --- | --- |
 | Price | Per GB of traffic, set by the node. Nothing else is charged. |
 | To start | Your balance must cover at least 1 GB at the node's price. |
