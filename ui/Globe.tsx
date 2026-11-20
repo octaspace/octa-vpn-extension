@@ -11,7 +11,7 @@ import { feature } from "topojson-client"
 import world from "world-atlas/countries-110m.json"
 
 // The route from the user to the exit node on a globe with the countries
-// drawn, in the Earth View palette of the console: the user's country and the
+// drawn, in the globe palette of the OctaSpace dashboard: the user's country and the
 // exit's country are filled, the globe turns to keep both in view.
 // Decorative: the text beside it says the same.
 

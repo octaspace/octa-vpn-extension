@@ -222,7 +222,7 @@ const covers = (balance: number, price: number) => {
     : `≈ ${Math.floor(gb)} GB`
 }
 
-/** "Beauharnois, Canada": the city when known, the country always. */
+/** "Frankfurt, Germany": the city when known, the country always. */
 const place = (p?: { city?: string; country?: string } | null) =>
   p ? [p.city, p.country].filter(Boolean).join(", ") || "Unknown" : "…"
 

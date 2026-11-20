@@ -123,7 +123,7 @@ async function stopOpenSessions(client: Api): Promise<void> {
 }
 
 /**
- * The core runs one VPN session per account and node. The browser's own one
+ * The API allows one VPN session per account and node. The browser's own one
  * already there (a crash, another profile) is taken over: its login comes
  * with /info. Another app's session on that node is not stopped for it.
  */
@@ -170,7 +170,7 @@ async function readBalance(client: Api): Promise<number> {
 /**
  * The session until it is ready. A 404 is a session that stopped (its start
  * failed on the node); any other error is a blip, polled through until the
- * deadline, as the Android app does.
+ * deadline.
  */
 async function waitReady(client: Api, uuid: string, signal: AbortSignal) {
   const deadline = Date.now() + SESSION_READY_TIMEOUT_MS
@@ -229,7 +229,7 @@ async function startSession(
   const node = ((await storage.get<VpnNode[]>(KEYS.nodes)) ?? []).find(
     (n) => n.node_number === nodeId
   )
-  // the core asks for at least 1 GB of the node's traffic
+  // the API asks for at least 1 GB of the node's traffic
   const balance = await readBalance(client)
   if (balance < Math.max(MIN_BALANCE, node?.price ?? 0)) {
     throw new AppError("low_balance")
@@ -346,7 +346,7 @@ export function check(): Promise<void> {
         return stopBecause("spend_limit")
       }
       const balance = await readBalance(client)
-      // the core stops it at $0.01 itself: stop first, and say why
+      // the platform stops it at $0.01 itself: stop first, and say why
       if (balance < MIN_BALANCE) return stopBecause("low_balance")
       if (
         view &&

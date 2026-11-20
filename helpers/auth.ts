@@ -57,7 +57,7 @@ async function exchangeCode(
 }
 
 /**
- * The console issues this app an API key for the account on every sign-in;
+ * The dashboard issues this app an API key for the account on every sign-in;
  * the previous one stops working.
  */
 async function issueApiKey(accessToken: string): Promise<string> {

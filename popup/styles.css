@@ -1,6 +1,6 @@
-/* Cube design tokens (Cube DESIGN.md, app/assets/tailwind/theme.css):
+/* The OctaSpace dashboard's design tokens:
  * neutral surfaces, eggplant only for the one action, green/red for state,
- * the Earth View globe palette, Satoshi, mono for addresses and times. */
+ * the dashboard's globe palette, Satoshi, mono for addresses and times. */
 
 :root {
   --font: "Satoshi Variable", ui-sans-serif, system-ui, -apple-system,
@@ -344,7 +344,7 @@ button.row:hover {
   font-size: 12px;
 }
 
-/* neutral segmented control (a choice inside a list, Cube Accent Budget Rule) */
+/* neutral segmented control (a choice inside a list: the accent stays on the one action) */
 .segmented {
   display: grid;
   grid-auto-flow: column;

@@ -2,8 +2,17 @@
   "name": "octa-vpn",
   "displayName": "OCTA VPN",
   "version": "1.0.0",
-  "description": "OCTA VPN Browser Extension",
-  "author": "",
+  "description": "Send your browser through an OctaSpace node. Pay per GB of traffic.",
+  "author": "OctaSpace",
+  "license": "MIT",
+  "homepage": "https://github.com/octaspace/octa-vpn-extension#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/octaspace/octa-vpn-extension.git"
+  },
+  "bugs": {
+    "url": "https://github.com/octaspace/octa-vpn-extension/issues"
+  },
   "scripts": {
     "dev": "plasmo dev --verbose",
     "typecheck": "tsc --noEmit",

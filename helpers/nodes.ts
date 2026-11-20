@@ -1,7 +1,7 @@
 import type { Geo, Selection, VpnNode } from "./model"
 
 // Picking a node: what the user can afford, the cheapest first, of those the
-// fastest (as the Android app does). The server refuses a start below the
+// fastest. The API refuses a start below the
 // price of 1 GB anyway.
 
 export type Candidate = { node_number: string; price: number; down: number }

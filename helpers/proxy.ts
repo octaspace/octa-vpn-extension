@@ -11,7 +11,7 @@ export type ProxyEndpoint = {
 }
 
 /**
- * The session's `config` for `http_proxy`, in any of the shapes the core may
+ * The session's `config` for `http_proxy`, in any of the shapes the API may
  * send: `{ip|host, port, username, password}`, the same as a JSON string, or
  * `http://user:pass@host:port` / `host:port`. Anything else is no endpoint.
  * It carries a password: never log it.

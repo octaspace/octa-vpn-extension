@@ -2,11 +2,11 @@
 
 export const IS_FIREFOX = process.env.PLASMO_BROWSER === "firefox"
 
-// The public API (oas) and the console (Cube) that signs users in and issues
+// The OctaSpace API and the OctaSpace dashboard, which signs users in and issues
 // the API key of this app.
 export const API_HOST = "https://api.octa.space"
 export const OAUTH_HOST = "https://console.octa.space"
-// The OAuth applications must exist on the console with `issues_api_keys`, for
+// The dashboard's OAuth applications of this extension (allowed to issue API keys), for
 // the redirect URIs https://meklldccaengbfnlbbbgadiijkgcfhbk.chromiumapp.org/
 // (Chrome) and https://9d8617723c445f3686b2f57bbf9587fa1e6b0ea3.extensions.allizom.org/
 // (Firefox).
@@ -25,7 +25,7 @@ export const PROXY_BYPASS = [
 ]
 
 // A node needs a few seconds to provision the proxy.
-// A node may take a minute to start the proxy, as the Android app allows.
+// A node may take up to a minute to start the proxy.
 export const SESSION_READY_TIMEOUT_MS = 60_000
 export const SESSION_POLL_MS = 2_000
 
@@ -38,7 +38,7 @@ export const WATCHDOG_PERIOD_MIN = 0.5
 export const MIN_BALANCE = 0.01
 
 // Warn once a session when the balance falls below this, or below 10% of what
-// it was at the start, whichever is higher (as the Android app does).
+// it was at the start, whichever is higher.
 export const LOW_BALANCE_USD = 0.25
 
 // Stopping a session: a few tries before it waits for the next start.

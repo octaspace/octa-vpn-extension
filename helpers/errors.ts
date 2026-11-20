@@ -51,7 +51,8 @@ export const ERROR_TEXT: Record<ErrorCode, string> = {
   cancelled: "Cancelled.",
   incognito_required:
     "Allow the extension to run in private windows: Firefox requires it to set a proxy.",
-  low_balance: "Not enough balance for this node. Top up in the console.",
+  low_balance:
+    "Not enough balance for this node. Top up in the OctaSpace dashboard.",
   network: "Network error. Check your connection and try again.",
   no_node: "No affordable node for this location.",
   node_unavailable: "This node is unavailable. Try another location.",

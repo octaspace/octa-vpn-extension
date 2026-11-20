@@ -57,7 +57,7 @@ export async function getToken(): Promise<string | undefined> {
 
 export const API_KEY_PATTERN = /^octa_ak_[A-Za-z0-9_-]{32}$/
 
-// Keys of the old API (64 hex) are refused by the new one: signing in again.
+// Only `octa_ak_` keys are valid: anything else means signing in again.
 export async function tokenExists() {
   return API_KEY_PATTERN.test((await getToken()) ?? "")
 }

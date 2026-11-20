@@ -5,7 +5,7 @@ import { send } from "~helpers/messages"
 
 import { ERROR_TEXT } from "./state"
 
-/** Sign-in through the console (OAuth); it issues this app its API key. */
+/** Sign-in through the OctaSpace dashboard (OAuth); it issues this app its API key. */
 export function Login({ onSignedIn }: { onSignedIn: () => void }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
