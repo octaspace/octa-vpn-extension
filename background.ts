@@ -4,8 +4,16 @@ import { toErrorCode } from "~helpers/errors"
 import type { Request, Response } from "~helpers/messages"
 import { ext } from "~helpers/platform"
 import { onProxyAuth, onProxyError } from "~helpers/proxy"
-import { check, connect, disconnect, proxyLogin } from "~helpers/session"
-import { clearData } from "~helpers/storage"
+import {
+  check,
+  connect,
+  disconnect,
+  iconState,
+  proxyLogin,
+  type ProxyStatus
+} from "~helpers/session"
+import { clearData, KEYS, storage } from "~helpers/storage"
+import { showState } from "~helpers/toolbar"
 
 async function attempt(task: () => Promise<void>): Promise<Response> {
   try {
@@ -56,6 +64,9 @@ onProxyError(() => {
   clearTimeout(pending)
   pending = setTimeout(check, 3_000)
 })
+
+// The icon the browser shows before anything changes: from the last state.
+storage.get<ProxyStatus>(KEYS.proxyStatus).then((s) => showState(iconState(s)))
 
 // Every start of the worker or the browser: a proxy left on with its session
 // gone would cut the browser off the internet.

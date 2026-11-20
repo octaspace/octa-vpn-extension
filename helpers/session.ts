@@ -21,7 +21,7 @@ import {
   type VpnNode
 } from "./model"
 import { createApi, type Api } from "./octa"
-import { ext, toolbarAction } from "./platform"
+import { ext } from "./platform"
 import {
   applyProxy,
   checkTunnel,
@@ -30,6 +30,7 @@ import {
   type ProxyEndpoint
 } from "./proxy"
 import { getToken, KEYS, storage } from "./storage"
+import { showState, type IconState } from "./toolbar"
 
 export type ProxyStatus =
   | "Disconnected"
@@ -67,8 +68,7 @@ function serial<T>(task: () => Promise<T>): Promise<T> {
 
 async function setStatus(status: ProxyStatus): Promise<void> {
   await storage.set(KEYS.proxyStatus, status)
-  toolbarAction?.setBadgeText({ text: status === "Connected" ? "ON" : "" })
-  toolbarAction?.setBadgeBackgroundColor({ color: "#2f9e44" })
+  void showState(iconState(status))
 }
 
 async function api(): Promise<Api> {
@@ -406,3 +406,10 @@ export async function proxyLogin(challenger: string): Promise<Login | null> {
   }
   return login && login.host === challenger ? login : null
 }
+
+export const iconState = (status?: ProxyStatus | null): IconState =>
+  status === "Connected"
+    ? "on"
+    : status === "Connecting" || status === "Disconnecting"
+    ? "busy"
+    : "off"

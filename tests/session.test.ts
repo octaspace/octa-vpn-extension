@@ -48,6 +48,7 @@ vi.mock("~helpers/storage", async (importOriginal) => ({
   getToken: async () => "token"
 }))
 vi.mock("~helpers/octa", () => ({ createApi: () => api }))
+vi.mock("~helpers/toolbar", () => ({ showState: vi.fn(async () => {}) }))
 const notify = vi.fn()
 vi.mock("~helpers/platform", () => ({
   ext: {
