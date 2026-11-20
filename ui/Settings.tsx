@@ -145,12 +145,11 @@ export function Settings({ onBack, onSignedOut }: Props) {
             </form>
             <span
               id="site-help"
-              className={siteError ? "error" : "muted"}
-              style={{ fontSize: 12 }}>
-              {siteError || "Its subdomains go direct too."}
-              {connected && !siteError
-                ? " Applies from the next connection."
-                : ""}
+              className={siteError ? "label error" : "label"}>
+              {siteError ||
+                (connected
+                  ? "Includes subdomains on next connect."
+                  : "Includes subdomains.")}
             </span>
             {settings.bypassSites.length > 0 && (
               <div className="site-chips">
@@ -175,20 +174,6 @@ export function Settings({ onBack, onSignedOut }: Props) {
           </section>
 
           <section className="settings-section">
-            <h2 className="label">Privacy</h2>
-            <div className="card notice">
-              <span style={{ color: "var(--success)", flexShrink: 0 }}>
-                <ShieldIcon size={16} />
-              </span>
-              <span>
-                <strong>WebRTC leak protection is on</strong> while connected.
-                HTTPS sites stay encrypted end to end; plain HTTP sites are
-                visible to the node.
-              </span>
-            </div>
-          </section>
-
-          <section className="settings-section">
             <h2 className="label">Theme</h2>
             <div className="segmented" role="radiogroup" aria-label="Theme">
               {THEMES.map(([value, label]) => (
@@ -200,6 +185,20 @@ export function Settings({ onBack, onSignedOut }: Props) {
                   {label}
                 </button>
               ))}
+            </div>
+          </section>
+
+          <section className="settings-section">
+            <h2 className="label">Privacy</h2>
+            <div className="card notice">
+              <span style={{ color: "var(--success)", flexShrink: 0 }}>
+                <ShieldIcon size={16} />
+              </span>
+              <span>
+                <strong>WebRTC is protected while connected.</strong>
+                <br />
+                Nodes can read plain HTTP traffic.
+              </span>
             </div>
           </section>
         </div>

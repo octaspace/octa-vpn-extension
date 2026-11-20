@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useState } from "react"
 
 import { send } from "~helpers/messages"
 import { tokenExists } from "~helpers/storage"
@@ -51,11 +51,21 @@ export function App() {
     if (authExpired && screen !== "login") signedOut(true)
   }, [authExpired, screen, signedOut])
 
-  useEffect(() => {
-    const dark = matchMedia("(prefers-color-scheme: dark)").matches
-    const theme =
-      settings.theme === "system" ? (dark ? "dark" : "light") : settings.theme
-    document.documentElement.dataset.theme = theme
+  useLayoutEffect(() => {
+    const preference = matchMedia("(prefers-color-scheme: dark)")
+    const applyTheme = () => {
+      document.documentElement.dataset.theme =
+        settings.theme === "system"
+          ? preference.matches
+            ? "dark"
+            : "light"
+          : settings.theme
+    }
+
+    applyTheme()
+    if (settings.theme !== "system") return
+    preference.addEventListener("change", applyTheme)
+    return () => preference.removeEventListener("change", applyTheme)
   }, [settings.theme])
 
   return (

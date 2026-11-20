@@ -13,6 +13,8 @@ manifest.permissions = [
     ].map((p) => (p === "webRequestAuthProvider" ? "webRequestBlocking" : p))
   )
 ]
+// Chromium pins its unpacked ID with key. Firefox uses gecko.id.
+delete manifest.key
 delete manifest.optional_host_permissions
 writeFileSync(path, JSON.stringify(manifest))
 console.log("firefox manifest:", manifest.permissions.join(", "))
