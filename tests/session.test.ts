@@ -30,7 +30,12 @@ const api = {
     tx: 0,
     charged: 0
   })),
-  stop: vi.fn(async () => {})
+  stop: vi.fn(async () => {}),
+  vpnSessions: vi.fn(
+    async (): Promise<
+      { uuid: string; node_number: string; subkind: string }[]
+    > => []
+  )
 }
 
 vi.mock("~helpers/storage", async (importOriginal) => ({
@@ -270,5 +275,28 @@ describe("proxy login", () => {
     await disconnect()
     expect(await proxyLogin("203.0.113.7")).toBeNull()
     api.info.mockReset()
+  })
+})
+
+describe("one VPN session per node", () => {
+  it("takes over the browser's own session already on the node", async () => {
+    api.vpnSessions.mockResolvedValueOnce([
+      { uuid: "uuid-old", node_number: "7KQ4-M2XD-4", subkind: "http_proxy" }
+    ])
+    expect(await connect("7KQ4-M2XD-4")).toEqual({ ok: true })
+    expect(api.start).not.toHaveBeenCalled()
+    expect(store.get("uuid")).toBe("uuid-old")
+  })
+
+  it("leaves another app's session alone and says why", async () => {
+    api.vpnSessions.mockResolvedValueOnce([
+      { uuid: "uuid-wg", node_number: "7KQ4-M2XD-4", subkind: "wg" }
+    ])
+    expect(await connect("7KQ4-M2XD-4")).toEqual({
+      ok: false,
+      error: "session_exists"
+    })
+    expect(api.start).not.toHaveBeenCalled()
+    expect(api.stop).not.toHaveBeenCalledWith("uuid-wg")
   })
 })

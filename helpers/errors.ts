@@ -18,6 +18,7 @@ export type ErrorCode =
   | "proxy_blocked"
   | "proxy_failed"
   | "session_ended"
+  | "session_exists"
   | "spend_limit"
   | "unknown"
 
@@ -35,7 +36,9 @@ export function toErrorCode(err: unknown): ErrorCode {
   if (err instanceof OctaNotFoundError) return "node_unavailable"
   // 400 on start: "Insufficient balance", "Node not available", a failed check…
   if (err instanceof OctaValidationError) {
-    return /balance/i.test(err.message) ? "low_balance" : "node_unavailable"
+    if (/balance/i.test(err.message)) return "low_balance"
+    if (/already have a VPN session/i.test(err.message)) return "session_exists"
+    return "node_unavailable"
   }
   if (err instanceof OctaError) return "network"
   return "unknown"
@@ -54,6 +57,8 @@ export const ERROR_TEXT: Record<ErrorCode, string> = {
   node_unavailable: "This node is unavailable. Try another location.",
   proxy_blocked: "Another extension controls the browser's proxy settings.",
   proxy_failed: "The browser refused the proxy settings.",
+  session_exists:
+    "Another app of yours has a VPN session on this node. Stop it there or pick another location.",
   session_ended: "The VPN session has ended on the node.",
   spend_limit: "The session reached your spending limit and was stopped.",
   unknown: "Something went wrong. Please try again."

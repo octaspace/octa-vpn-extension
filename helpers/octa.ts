@@ -77,6 +77,17 @@ export function createApi(apiKey: string) {
       }
     },
 
+    /** The account's VPN sessions running now: their node and protocol. */
+    async vpnSessions(): Promise<
+      { uuid: string; node_number: string; subkind: string }[]
+    > {
+      return (await client.sessions.list()).filter(isVpnSession).map((s) => ({
+        uuid: s.uuid,
+        node_number: s.node_number ?? "",
+        subkind: s.subkind ?? ""
+      }))
+    },
+
     async stop(uuid: string): Promise<void> {
       await client.sessions.stop(uuid)
     },

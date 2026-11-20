@@ -122,6 +122,21 @@ async function stopOpenSessions(client: Api): Promise<void> {
   await storage.set(KEYS.uuid, "")
 }
 
+/**
+ * The core runs one VPN session per account and node. The browser's own one
+ * already there (a crash, another profile) is taken over: its login comes
+ * with /info. Another app's session on that node is not stopped for it.
+ */
+async function startOrAdopt(client: Api, nodeId: string): Promise<string> {
+  const onNode = (await client.vpnSessions()).filter(
+    (s) => s.node_number === nodeId
+  )
+  const ours = onNode.find((s) => s.subkind === "http_proxy")
+  if (ours) return ours.uuid
+  if (onNode.length > 0) throw new AppError("session_exists")
+  return client.start(nodeId)
+}
+
 /** A notification of its own: the popup is closed when the background acts. */
 function alert(message: string) {
   ext.notifications?.create({
@@ -221,7 +236,7 @@ async function startSession(
   }
 
   await setStatus("Connecting")
-  const uuid = await client.start(nodeId)
+  const uuid = await startOrAdopt(client, nodeId)
   await remember(uuid)
   await storage.set(KEYS.uuid, uuid)
 
