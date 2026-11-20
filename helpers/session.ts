@@ -24,6 +24,7 @@ import { createApi, type Api } from "./octa"
 import { ext, toolbarAction } from "./platform"
 import {
   applyProxy,
+  checkTunnel,
   clearProxy,
   readProxyControl,
   type ProxyEndpoint
@@ -252,6 +253,9 @@ async function startSession(
   } catch (err) {
     throw err instanceof AppError ? err : new AppError("proxy_failed")
   }
+  // Connected means traffic gets through, not only that the node is ready.
+  if (!(await checkTunnel())) throw new AppError("node_unavailable")
+  signal.throwIfAborted()
   const view: SessionView = {
     node_number: nodeId,
     ip: info.ip,

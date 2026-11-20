@@ -67,7 +67,8 @@ vi.mock("~helpers/config", async (importOriginal) => ({
 vi.mock("~helpers/proxy", () => ({
   applyProxy: vi.fn(async () => void (proxy.on = true)),
   clearProxy: vi.fn(async () => void (proxy.on = false)),
-  readProxyControl: async () => (proxy.on ? "on" : "off")
+  readProxyControl: async () => (proxy.on ? "on" : "off"),
+  checkTunnel: vi.fn(async () => true)
 }))
 
 const { check, connect, disconnect } = await import("~helpers/session")
@@ -298,5 +299,18 @@ describe("one VPN session per node", () => {
     })
     expect(api.start).not.toHaveBeenCalled()
     expect(api.stop).not.toHaveBeenCalledWith("uuid-wg")
+  })
+})
+
+describe("tunnel check", () => {
+  it("a node whose proxy lets nothing through is not Connected", async () => {
+    const { checkTunnel } = await import("~helpers/proxy")
+    vi.mocked(checkTunnel).mockResolvedValueOnce(false)
+    expect(await connect("7KQ4-M2XD-4")).toEqual({
+      ok: false,
+      error: "node_unavailable"
+    })
+    expect(proxy.on).toBe(false)
+    expect(api.stop).toHaveBeenCalledWith("uuid-1")
   })
 })

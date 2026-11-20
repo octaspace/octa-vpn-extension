@@ -239,3 +239,24 @@ export function onProxyAuth(
     )
   }
 }
+
+// A tiny response through the node, outside the bypass list.
+const TUNNEL_CHECK_URL = "https://www.gstatic.com/generate_204"
+
+/**
+ * One request through the node, from the extension itself: it proves the
+ * tunnel works, and the proxy's login it answers stays in the browser's
+ * cache. Requests the extension cannot see (the new tab page, the browser's
+ * own) then get the login from that cache instead of asking the user.
+ */
+export async function checkTunnel(timeoutMs = 15_000): Promise<boolean> {
+  try {
+    const res = await fetch(TUNNEL_CHECK_URL, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(timeoutMs)
+    })
+    return res.status === 204 || res.ok
+  } catch {
+    return false
+  }
+}
