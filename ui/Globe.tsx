@@ -19,7 +19,7 @@ type Point = { lat: number | null; lon: number | null }
 type LonLat = [number, number]
 
 // before the popup has any place to show
-const DEFAULT_CENTRE: LonLat = [15, 30]
+const DEFAULT_CENTRE: LonLat = [-22, 45]
 const SIZE = 200
 const R = 94
 

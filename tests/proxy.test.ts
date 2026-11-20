@@ -4,7 +4,10 @@ import { PROXY_BYPASS } from "~helpers/config"
 import {
   chromeProxyConfig,
   firefoxProxyConfig,
-  proxyControl
+  isProbeBypass,
+  parseProxyConfig,
+  proxyControl,
+  warmUpPac
 } from "~helpers/proxy"
 
 const endpoint = { host: "203.0.113.7", port: 3128 }
@@ -169,4 +172,17 @@ describe("warm-up PAC", () => {
       "DIRECT"
     )
   })
+})
+
+it("preserves an explicit TLS proxy scheme in both Chromium configurations", () => {
+  const secure = parseProxyConfig("https://proxy.example:443")
+  expect(secure).toEqual({ host: "proxy.example", port: 443, scheme: "https" })
+  expect(chromeProxyConfig(secure!).rules.singleProxy.scheme).toBe("https")
+  expect(warmUpPac(secure!)).toContain("HTTPS proxy.example:443")
+})
+
+it("recognizes exclusions that would send the probe directly", () => {
+  expect(isProbeBypass("www.gstatic.com")).toBe(true)
+  expect(isProbeBypass("gstatic.com")).toBe(true)
+  expect(isProbeBypass("example.com")).toBe(false)
 })

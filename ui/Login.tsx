@@ -3,6 +3,7 @@ import logo from "url:~assets/icon.png"
 
 import { send } from "~helpers/messages"
 
+import { Globe } from "./Globe"
 import { ERROR_TEXT } from "./state"
 
 /** Sign-in through the OctaSpace dashboard (OAuth); it issues this app its API key. */
@@ -21,53 +22,35 @@ export function Login({ onSignedIn }: { onSignedIn: () => void }) {
       setError(ERROR_TEXT[res.error ?? "unknown"])
   }
 
-  // The same frame as every other screen: header, body, the one action at
-  // the bottom, so signing out does not look like the layout broke.
   return (
     <>
-      <header className="header">
+      <header className="header popup-header">
+        <img className="popup-logo" src={logo} alt="" />
         <h1>Octa VPN</h1>
       </header>
-
-      <main
-        className="body"
-        style={{
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 12,
-          padding: "16px 24px",
-          textAlign: "center"
-        }}>
-        <img src={logo} alt="" width={56} height={56} />
-        <h2
-          style={{
-            margin: 0,
-            fontSize: 20,
-            lineHeight: "28px",
-            fontWeight: 500
-          }}>
-          Sign in
-        </h2>
-        <p className="muted" style={{ margin: 0, maxWidth: 260 }}>
-          A private exit for this browser through an OctaSpace node. Billed per
-          GB of traffic.
-        </p>
-        {error && (
-          <p role="alert" className="error" style={{ margin: 0, fontSize: 12 }}>
-            {error}
-          </p>
-        )}
-      </main>
-
-      <footer className="pad">
-        <button className="btn btn-ink" disabled={busy} onClick={signIn}>
-          {busy ? (
-            <span className="spinner" aria-label="Signing in" />
-          ) : (
-            "Sign in with OctaSpace"
+      <main className="body">
+        <div className="globe-area globe-idle">
+          <Globe />
+        </div>
+        <div className="popup-content login-content">
+          <div className="popup-intro">
+            <h2>Sign in</h2>
+            <p>
+              Choose an OctaSpace node for this browser.
+              <br />
+              Pay per GB of traffic.
+            </p>
+          </div>
+          <button className="btn btn-ink" disabled={busy} onClick={signIn}>
+            {busy ? "Signing in…" : "Sign in with OctaSpace"}
+          </button>
+          {error && (
+            <p role="alert" className="popup-error">
+              {error}
+            </p>
           )}
-        </button>
-      </footer>
+        </div>
+      </main>
     </>
   )
 }

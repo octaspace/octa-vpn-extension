@@ -2,6 +2,7 @@ import { login } from "~helpers/auth"
 import { WATCHDOG_ALARM } from "~helpers/config"
 import { toErrorCode } from "~helpers/errors"
 import type { Request, Response } from "~helpers/messages"
+import { hasSiteAccess } from "~helpers/permissions"
 import { ext } from "~helpers/platform"
 import { onProxyAuth, onProxyError } from "~helpers/proxy"
 import {
@@ -10,9 +11,11 @@ import {
   disconnect,
   iconState,
   proxyLogin,
+  refreshAccount,
+  replaceCredentials,
   type ProxyStatus
 } from "~helpers/session"
-import { clearData, KEYS, storage } from "~helpers/storage"
+import { KEYS, storage } from "~helpers/storage"
 import { showState } from "~helpers/toolbar"
 
 async function attempt(task: () => Promise<void>): Promise<Response> {
@@ -36,22 +39,28 @@ async function handle(request: Request): Promise<Response> {
       return { ok: true }
     case "login":
       return attempt(login)
+    case "refreshAccount":
+      return attempt(() => refreshAccount(request.force))
     case "signOut":
       // stop the session while the key is still there
-      await disconnect()
-      await clearData()
-      return { ok: true }
+      return attempt(() => replaceCredentials())
   }
 }
 
 ext.runtime.onMessage.addListener((request: Request, sender, sendResponse) => {
   if (sender.id !== ext.runtime.id) return false
-  handle(request).then(sendResponse)
+  handle(request).then(sendResponse, (err) =>
+    sendResponse({ ok: false, error: toErrorCode(err) })
+  )
   return true // the response is async
 })
 
 ext.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === WATCHDOG_ALARM) check()
+})
+
+ext.permissions.onRemoved.addListener(async ({ origins }) => {
+  if (origins?.length && !(await hasSiteAccess())) await disconnect()
 })
 
 // A dead node shows up as proxy errors first: check now, not at the next tick.
@@ -62,7 +71,7 @@ onProxyAuth(proxyLogin)
 
 onProxyError(() => {
   clearTimeout(pending)
-  pending = setTimeout(check, 3_000)
+  pending = setTimeout(() => check(true), 3_000)
 })
 
 // The icon the browser shows before anything changes: from the last state.

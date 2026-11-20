@@ -16,10 +16,14 @@ export type ErrorCode =
   | "no_node"
   | "node_unavailable"
   | "proxy_blocked"
+  | "site_access_required"
+  | "webrtc_failed"
   | "proxy_failed"
+  | "probe_bypassed"
   | "session_ended"
   | "session_exists"
   | "spend_limit"
+  | "stop_pending"
   | "unknown"
 
 export class AppError extends Error {
@@ -56,11 +60,18 @@ export const ERROR_TEXT: Record<ErrorCode, string> = {
   network: "Network error. Check your connection and try again.",
   no_node: "No affordable node for this location.",
   node_unavailable: "This node is unavailable. Try another location.",
+  site_access_required: "Allow site access to sign in to the node’s proxy.",
+  webrtc_failed:
+    "The browser refused WebRTC protection. Check browser or extension settings.",
   proxy_blocked: "Another extension controls the browser's proxy settings.",
+  probe_bypassed:
+    "Remove the connection check host (www.gstatic.com) from the VPN exclusions.",
   proxy_failed: "The browser refused the proxy settings.",
   session_exists:
     "Another app of yours has a VPN session on this node. Stop it there or pick another location.",
   session_ended: "The VPN session has ended on the node.",
+  stop_pending:
+    "The node hasn’t confirmed the session stop. Try signing out again.",
   spend_limit: "The session reached your spending limit and was stopped.",
   unknown: "Something went wrong. Please try again."
 }

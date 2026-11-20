@@ -1,12 +1,15 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import logo from "url:~assets/icon.png"
 
 import { bytes, duration, mbps, perGb, spent, usd } from "~helpers/format"
 import { send } from "~helpers/messages"
 import { resolveSelection } from "~helpers/nodes"
+import { requestSiteAccess } from "~helpers/permissions"
 
 import { Globe } from "./Globe"
 import {
   AlertIcon,
+  BackIcon,
   CheckIcon,
   ChevronIcon,
   RingIcon,
@@ -41,6 +44,20 @@ export function Home({ onLocations, onSettings, toast }: Props) {
   const lastError = useLastError()
   const [selection] = useSelection()
   const [settings] = useSettings()
+  const [requesting, setRequesting] = useState(false)
+  const [showRoute, setShowRoute] = useState(false)
+  const routeHeading = useRef<HTMLHeadingElement>(null)
+  const routeButton = useRef<HTMLButtonElement>(null)
+  const returnToRouteButton = useRef(false)
+
+  useEffect(() => {
+    if (showRoute) {
+      routeHeading.current?.focus()
+    } else if (returnToRouteButton.current) {
+      returnToRouteButton.current = false
+      routeButton.current?.focus()
+    }
+  }, [showRoute])
   const now = useNow(status === "Connected")
 
   const connected = status === "Connected"
@@ -66,21 +83,100 @@ export function Home({ onLocations, onSettings, toast }: Props) {
           ? ERROR_TEXT.no_node
           : "No nodes offer the browser VPN right now."
       )
-    const res = await send({ type: "connect", nodeId: node.node_number })
-    if (!res.ok && res.error !== "cancelled")
-      toast(ERROR_TEXT[res.error ?? "unknown"])
+    setRequesting(true)
+    try {
+      if (!(await requestSiteAccess()))
+        return toast(ERROR_TEXT.site_access_required)
+      const res = await send({ type: "connect", nodeId: node.node_number })
+      if (!res.ok && res.error !== "cancelled")
+        toast(ERROR_TEXT[res.error ?? "unknown"])
+    } catch {
+      toast(ERROR_TEXT.site_access_required)
+    } finally {
+      setRequesting(false)
+    }
   }
 
-  const location =
-    selection.kind === "node"
-      ? `Node ${selection.node_number}`
-      : selection.kind === "country"
-      ? selection.country
-      : "Best available"
+  const exit = connected ? session : node
+  const exitNode = connected
+    ? nodes.find((candidate) => candidate.node_number === session?.node_number)
+    : node
+  const failure = !connected && !busy && lastError && lastError !== "cancelled"
+  const stateLabel = connected
+    ? "Connected"
+    : status === "Connecting"
+    ? "Connecting…"
+    : busy
+    ? "Disconnecting…"
+    : failure
+    ? "Disconnected"
+    : "Not connected"
+
+  if (showRoute) {
+    return (
+      <>
+        <header className="header back popup-header">
+          <button
+            className="icon-btn"
+            type="button"
+            aria-label="Back"
+            onClick={() => {
+              returnToRouteButton.current = true
+              setShowRoute(false)
+            }}>
+            <BackIcon />
+          </button>
+          <h1 tabIndex={-1} ref={routeHeading}>
+            Route details
+          </h1>
+        </header>
+        <main className="body">
+          <div className="route-data">
+            {exit ? (
+              <dl className="card">
+                {connected && geo && (
+                  <div>
+                    <dt className="label">From</dt>
+                    <dd>{place(geo)}</dd>
+                  </div>
+                )}
+                <div>
+                  <dt className="label">Exit</dt>
+                  <dd>{place(exit)}</dd>
+                </div>
+                {connected && session?.ip && (
+                  <div>
+                    <dt className="label">Exit IP</dt>
+                    <dd className="mono">{session.ip}</dd>
+                  </div>
+                )}
+                <div>
+                  <dt className="label">Node</dt>
+                  <dd>
+                    {exitNode ? `${mbps(exitNode.down)} · ` : ""}
+                    {perGb(exit.price)}
+                  </dd>
+                </div>
+              </dl>
+            ) : (
+              <p className="muted">No exit is selected.</p>
+            )}
+            {connected && (
+              <p className="label">
+                OctaSpace services and configured exclusions can connect
+                directly.
+              </p>
+            )}
+          </div>
+        </main>
+      </>
+    )
+  }
 
   return (
     <>
-      <header className="header">
+      <header className="header popup-header">
+        <img className="popup-logo" src={logo} alt="" />
         <h1>Octa VPN</h1>
         <span className="balance" aria-label="Balance">
           {balance == null ? "…" : usd(balance)}
@@ -90,148 +186,120 @@ export function Home({ onLocations, onSettings, toast }: Props) {
         </button>
       </header>
 
-      {/* One rhythm: the globe takes the free height, the blocks below keep
-          16 px between groups and 12 px inside them, in every state. */}
-      <main className="body home">
+      <main className="body">
         <div className="globe-area">
-          <Globe you={geo} exit={connected ? session : node} />
+          <Globe
+            you={connected ? geo : null}
+            exit={connected ? session : null}
+          />
         </div>
+        <div className="popup-content">
+          <div className="popup-intro">
+            <div
+              role="status"
+              className={`status ${
+                connected ? "connected" : busy ? "busy" : "idle"
+              }`}>
+              {connected ? (
+                <CheckIcon size={16} />
+              ) : busy ? (
+                <span className="spinner" />
+              ) : (
+                <RingIcon size={16} />
+              )}
+              <h2>{stateLabel}</h2>
+            </div>
+            <p>
+              {connected
+                ? "Browser traffic via OctaSpace"
+                : busy
+                ? "Updating your browser connection."
+                : "Browser traffic uses your usual connection."}
+            </p>
+          </div>
 
-        <div className="stack">
-          {/* the route: the same dots as on the globe, you to the exit */}
-          <div className="card route">
-            <div className="stop">
-              <span className="dot you" />
+          <button
+            className={`btn ${
+              connected || busy ? "popup-secondary" : "btn-ink"
+            }`}
+            onClick={toggle}
+            disabled={status === "Disconnecting" || (requesting && !busy)}>
+            {connected
+              ? "Disconnect"
+              : status === "Connecting"
+              ? "Cancel"
+              : "Connect"}
+          </button>
+
+          {failure && (
+            <p className="popup-error" role="alert">
+              <span aria-hidden="true">
+                <AlertIcon size={16} />
+              </span>{" "}
+              {ERROR_TEXT[lastError]}
+            </p>
+          )}
+
+          <div className="route-actions">
+            <button
+              type="button"
+              className="card popup-route"
+              onClick={onLocations}>
+              <span className="dot exit" aria-hidden="true" />
               <span className="grow">
                 <span className="label">
-                  {connected ? "You" : "You are in"}
+                  {connected ? "Exit location" : "Selected exit"}
                 </span>
-                <span className="title">{place(geo)}</span>
-              </span>
-              <span className="mono muted end">
-                {connected ? "hidden" : geo?.ip ?? ""}
-              </span>
-            </div>
-            <button className="stop" onClick={onLocations}>
-              <span className="dot exit" />
-              <span className="grow">
-                <span className="label">Exit · {location}</span>
                 <span className="title">
-                  {connected && session
-                    ? place(session)
-                    : node
-                    ? place(node)
-                    : "Choose where to exit"}
+                  {exit ? place(exit) : "Choose a location"}
                 </span>
-                {node && (
-                  <span className="sub">
-                    {mbps(node.down)} · {perGb(node.price)}
-                  </span>
-                )}
               </span>
-              <span className="mono end">{connected ? session?.ip : ""}</span>
               <ChevronIcon size={16} />
             </button>
+            {exit && (
+              <button
+                type="button"
+                className="route-info"
+                ref={routeButton}
+                onClick={() => setShowRoute(true)}>
+                Route details
+              </button>
+            )}
           </div>
 
-          <div className="pills">
-            <button className="pill" onClick={onSettings}>
-              {sitesLabel(settings.bypassSites.length)}
-            </button>
-            <button className="pill" onClick={onSettings}>
-              {settings.spendLimit
-                ? `Limit ${usd(settings.spendLimit)}`
-                : "No spending limit"}
-            </button>
-          </div>
+          {connected && session && (
+            <div className="popup-meter">
+              <dl className="stats">
+                <div>
+                  <dt className="label">Time</dt>
+                  <dd className="value">
+                    {duration(now - session.started_at)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="label">Traffic</dt>
+                  <dd className="value">{bytes(session.rx + session.tx)}</dd>
+                </div>
+                <div>
+                  <dt className="label">Spent</dt>
+                  <dd className="value">{spent(session.charged)}</dd>
+                </div>
+              </dl>
+              {settings.spendLimit > 0 && (
+                <p className="label">
+                  Session spend target · {usd(settings.spendLimit)}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </main>
-
-      <footer className="pad">
-        <span
-          role="status"
-          className={`status ${
-            connected ? "connected" : busy ? "busy" : "idle"
-          }`}>
-          {connected ? (
-            <CheckIcon size={16} />
-          ) : busy ? (
-            <span className="spinner" />
-          ) : (
-            <RingIcon size={16} />
-          )}
-          {connected
-            ? "Connected"
-            : status === "Connecting"
-            ? "Connecting…"
-            : busy
-            ? "Disconnecting…"
-            : "Not connected"}
-        </span>
-        {/* always three values, so connecting does not move the layout */}
-        <div className="stats">
-          {(connected && session
-            ? [
-                ["Time", duration(now - session.started_at)],
-                ["Traffic", bytes(session.rx + session.tx)],
-                ["Spent", spent(session.charged)]
-              ]
-            : [
-                ["Price", node ? perGb(node.price) : "—"],
-                ["Balance", balance == null ? "…" : usd(balance)],
-                [
-                  "Covers",
-                  node && balance != null ? covers(balance, node.price) : "—"
-                ]
-              ]
-          ).map(([label, value]) => (
-            <span key={label}>
-              <span className="label">{label}</span>
-              <span className="value">{value}</span>
-            </span>
-          ))}
-        </div>
-        {!connected && !busy && lastError && lastError !== "cancelled" && (
-          <span
-            className="error"
-            style={{ fontSize: 12, display: "flex", gap: 6 }}>
-            <AlertIcon size={16} /> {ERROR_TEXT[lastError]}
-          </span>
-        )}
-        <button
-          className="btn btn-ink"
-          onClick={toggle}
-          disabled={status === "Disconnecting"}>
-          {connected
-            ? "Disconnect"
-            : status === "Connecting"
-            ? "Cancel"
-            : "Connect"}
-        </button>
-      </footer>
     </>
   )
 }
 
-/** How much traffic the balance pays for at this price. */
-const covers = (balance: number, price: number) => {
-  if (balance <= 0 || price <= 0) return "—"
-  const gb = balance / price
-  return gb >= 1000
-    ? `≈ ${(gb / 1000).toFixed(gb >= 10000 ? 0 : 1)} TB`
-    : `≈ ${Math.floor(gb)} GB`
-}
-
-/** "Frankfurt, Germany": the city when known, the country always. */
-const place = (p?: { city?: string; country?: string } | null) =>
-  p ? [p.city, p.country].filter(Boolean).join(", ") || "Unknown" : "…"
-
-const sitesLabel = (n: number) =>
-  n === 0
-    ? "All sites via VPN"
-    : n === 1
-    ? "1 site direct"
-    : `${n} sites direct`
+const place = (p: { city?: string; country?: string }) =>
+  [p.city, p.country].filter(Boolean).join(", ") || "Unknown"
 
 /** The clock for the session timer: ticks only while it is shown. */
 function useNow(active: boolean) {

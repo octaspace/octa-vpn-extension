@@ -10,7 +10,8 @@ import {
   randomString
 } from "./pkce"
 import { ext } from "./platform"
-import { API_KEY_PATTERN, clearData, setToken } from "./storage"
+import { replaceCredentials } from "./session"
+import { API_KEY_PATTERN } from "./storage"
 
 export function authorizeUrl(
   redirectUri: string,
@@ -86,8 +87,7 @@ export async function verifyKey(key: string): Promise<void> {
 
 async function signIn(key: string): Promise<void> {
   await verifyKey(key)
-  await clearData()
-  await setToken(key)
+  await replaceCredentials(key)
 }
 
 /** Signs the user in; resolves once the API key is stored. */

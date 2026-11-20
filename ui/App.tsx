@@ -1,8 +1,7 @@
-import { OctaAuthenticationError } from "@octaspace/sdk"
 import { useCallback, useEffect, useState } from "react"
 
-import { refreshData } from "~helpers/data"
-import { clearData, tokenExists } from "~helpers/storage"
+import { send } from "~helpers/messages"
+import { tokenExists } from "~helpers/storage"
 
 import { Home } from "./Home"
 import { AlertIcon } from "./icons"
@@ -26,7 +25,6 @@ export function App() {
 
   const signedOut = useCallback(
     async (expired: boolean) => {
-      await clearData()
       setScreen("login")
       if (expired) toast(ERROR_TEXT.auth_expired)
     },
@@ -34,14 +32,13 @@ export function App() {
   )
 
   // The data the screens show: fresh on every open of the popup.
-  const load = useCallback(async () => {
-    try {
-      await refreshData()
-    } catch (err) {
-      if (err instanceof OctaAuthenticationError) signedOut(true)
-      else toast(ERROR_TEXT.network)
-    }
-  }, [signedOut, toast])
+  const load = useCallback(
+    async (force = false) => {
+      const result = await send({ type: "refreshAccount", force })
+      if (!result.ok) toast(ERROR_TEXT[result.error ?? "unknown"])
+    },
+    [toast]
+  )
 
   useEffect(() => {
     tokenExists().then((yes) => {
@@ -62,7 +59,10 @@ export function App() {
   }, [settings.theme])
 
   return (
-    <div className="app">
+    <div
+      className={
+        screen === "home" || screen === "login" ? "app app-compact" : "app"
+      }>
       {screen === "loading" && (
         <main
           className="body"
@@ -74,7 +74,7 @@ export function App() {
         <Login
           onSignedIn={() => {
             setScreen("home")
-            refreshData(true).catch(() => toast(ERROR_TEXT.network))
+            void load(true)
           }}
         />
       )}

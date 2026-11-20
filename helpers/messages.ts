@@ -10,6 +10,7 @@ export type Request =
   | { type: "refresh" }
   | { type: "login" }
   | { type: "signOut" }
+  | { type: "refreshAccount"; force?: boolean }
 
 export type Response = { ok: boolean; error?: ErrorCode }
 

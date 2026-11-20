@@ -39,19 +39,25 @@ const api = {
 }
 
 vi.mock("~helpers/storage", async (importOriginal) => ({
-  KEYS: ((await importOriginal()) as { KEYS: object }).KEYS,
+  ...((await importOriginal()) as object),
   storage: {
     get: async (k: string) => store.get(k),
     set: async (k: string, v: unknown) => void store.set(k, v),
     remove: async (k: string) => void store.delete(k)
   },
-  getToken: async () => "token"
+  getToken: async () => `octa_ak_${"a".repeat(32)}`,
+  clearData: async () => {
+    store.delete("authExpired")
+    store.delete("uuid")
+  }
 }))
 vi.mock("~helpers/octa", () => ({ createApi: () => api }))
+vi.mock("~helpers/data", () => ({ refreshData: vi.fn(async () => {}) }))
 vi.mock("~helpers/toolbar", () => ({ showState: vi.fn(async () => {}) }))
 const notify = vi.fn()
 vi.mock("~helpers/platform", () => ({
   ext: {
+    permissions: { contains: async () => true },
     alarms: { create: vi.fn(), clear: vi.fn() },
     extension: { isAllowedIncognitoAccess: async () => true },
     notifications: { create: (o: { message: string }) => notify(o.message) },
@@ -72,8 +78,12 @@ vi.mock("~helpers/proxy", () => ({
   checkTunnel: vi.fn(async () => true)
 }))
 
-const { check, connect, disconnect } = await import("~helpers/session")
-const { OctaNotFoundError } = await import("@octaspace/sdk")
+const { check, connect, disconnect, refreshAccount, replaceCredentials } =
+  await import("~helpers/session")
+const { refreshData } = await import("~helpers/data")
+const { OctaAuthenticationError, OctaNotFoundError } = await import(
+  "@octaspace/sdk"
+)
 
 beforeEach(() => {
   store.clear()
@@ -93,6 +103,33 @@ describe("session", () => {
       node_number: "7KQ4-M2XD-4",
       ip: "203.0.113.7"
     })
+  })
+
+  it("clears the proxy and keeps the pending stop if credentials expire", async () => {
+    await connect("7KQ4-M2XD-4")
+    api.stop
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockRejectedValueOnce(new Error("offline"))
+    vi.mocked(refreshData).mockRejectedValueOnce(
+      new OctaAuthenticationError("expired", 401)
+    )
+    await refreshAccount()
+
+    expect(proxy.on).toBe(false)
+    expect(store.get("authExpired")).toBe(true)
+    expect(store.get("uuid")).toBeUndefined()
+    expect(store.get("openSessions")).toEqual(["uuid-1"])
+  })
+
+  it("stops the session and clears local data on sign-out", async () => {
+    await connect("7KQ4-M2XD-4")
+    await replaceCredentials()
+
+    expect(api.stop).toHaveBeenCalledWith("uuid-1")
+    expect(proxy.on).toBe(false)
+    expect(store.get("openSessions")).toEqual([])
+    expect(store.get("uuid")).toBeUndefined()
   })
 
   it("refuses a low balance before starting anything", async () => {
@@ -268,14 +305,17 @@ describe("proxy login", () => {
       }
     } as any)
     await connect("7KQ4-M2XD-4")
-    expect(await proxyLogin("203.0.113.7")).toMatchObject({
-      username: "u1",
-      password: "secret"
-    })
-    expect(await proxyLogin("198.51.100.1")).toBeNull()
+    expect(await proxyLogin({ host: "203.0.113.7", port: 3128 })).toMatchObject(
+      {
+        username: "u1",
+        password: "secret"
+      }
+    )
+    expect(await proxyLogin({ host: "198.51.100.1", port: 3128 })).toBeNull()
+    expect(await proxyLogin({ host: "203.0.113.7", port: 3129 })).toBeNull()
     expect(JSON.stringify([...store.values()])).not.toContain("secret")
     await disconnect()
-    expect(await proxyLogin("203.0.113.7")).toBeNull()
+    expect(await proxyLogin({ host: "203.0.113.7", port: 3128 })).toBeNull()
     api.info.mockReset()
   })
 })

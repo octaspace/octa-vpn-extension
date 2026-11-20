@@ -4,8 +4,8 @@
 
 type Setting<T> = {
   get(details: object): Promise<{ levelOfControl: string; value: T }>
-  set(details: { value: T; scope?: string }): Promise<void>
-  clear(details: { scope?: string }): Promise<void>
+  set(details: { value: T; scope?: string }): Promise<boolean | void>
+  clear(details: { scope?: string }): Promise<boolean | void>
 }
 
 type Listener<T> = { addListener(cb: (arg: T) => void): void }
@@ -39,6 +39,7 @@ export interface ExtensionApi {
   extension: { isAllowedIncognitoAccess(): Promise<boolean> }
   runtime: typeof chrome.runtime
   alarms: typeof chrome.alarms
+  permissions: typeof chrome.permissions
   action?: typeof chrome.action
   webRequest?: {
     onAuthRequired: {

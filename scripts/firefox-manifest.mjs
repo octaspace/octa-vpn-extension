@@ -7,10 +7,12 @@ const path = "build/firefox-mv2-prod/manifest.json"
 const manifest = JSON.parse(readFileSync(path, "utf8"))
 manifest.permissions = [
   ...new Set(
-    manifest.permissions.map((p) =>
-      p === "webRequestAuthProvider" ? "webRequestBlocking" : p
-    )
+    [
+      ...manifest.permissions.filter((p) => !p.startsWith("https://")),
+      "<all_urls>"
+    ].map((p) => (p === "webRequestAuthProvider" ? "webRequestBlocking" : p))
   )
 ]
+delete manifest.optional_host_permissions
 writeFileSync(path, JSON.stringify(manifest))
 console.log("firefox manifest:", manifest.permissions.join(", "))

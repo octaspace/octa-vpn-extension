@@ -13,6 +13,7 @@ import {
   WATCHDOG_ALARM,
   WATCHDOG_PERIOD_MIN
 } from "./config"
+import { refreshData } from "./data"
 import { AppError, ERROR_TEXT, toErrorCode, type ErrorCode } from "./errors"
 import {
   DEFAULT_SETTINGS,
@@ -21,6 +22,7 @@ import {
   type VpnNode
 } from "./model"
 import { createApi, type Api } from "./octa"
+import { hasSiteAccess, notificationAccess } from "./permissions"
 import { ext } from "./platform"
 import {
   applyProxy,
@@ -29,7 +31,7 @@ import {
   readProxyControl,
   type ProxyEndpoint
 } from "./proxy"
-import { getToken, KEYS, storage } from "./storage"
+import { clearData, getToken, KEYS, setToken, storage } from "./storage"
 import { showState, type IconState } from "./toolbar"
 
 export type ProxyStatus =
@@ -44,7 +46,7 @@ let starting: AbortController | null = null
 
 // The proxy's login for this session: in memory only, never in storage. A
 // worker that restarts asks the API for it again (`proxyLogin`).
-type Login = { host: string; username: string; password: string }
+type Login = { host: string; port: number; username: string; password: string }
 let login: Login | null = null
 
 function keepLogin(endpoint: ProxyEndpoint) {
@@ -52,6 +54,7 @@ function keepLogin(endpoint: ProxyEndpoint) {
     endpoint.username && endpoint.password !== undefined
       ? {
           host: endpoint.host,
+          port: endpoint.port,
           username: endpoint.username,
           password: endpoint.password
         }
@@ -139,13 +142,20 @@ async function startOrAdopt(client: Api, nodeId: string): Promise<string> {
 }
 
 /** A notification of its own: the popup is closed when the background acts. */
-function alert(message: string) {
-  ext.notifications?.create({
-    type: "basic",
-    iconUrl: ext.runtime.getURL(ext.runtime.getManifest().icons?.["128"] ?? ""),
-    title: "Octa VPN",
-    message
-  })
+async function alert(message: string) {
+  if (!(await ext.permissions.contains(notificationAccess))) return
+  try {
+    await ext.notifications?.create({
+      type: "basic",
+      iconUrl: ext.runtime.getURL(
+        ext.runtime.getManifest().icons?.["128"] ?? ""
+      ),
+      title: "Octa VPN",
+      message
+    })
+  } catch {
+    // Permission can be withdrawn while the notification is being created.
+  }
 }
 
 const sleep = (ms: number, signal: AbortSignal) =>
@@ -197,7 +207,7 @@ async function teardown(error?: ErrorCode): Promise<void> {
   await clearProxy()
   login = null
   // nothing to stop on a fresh install or after sign-out: no API call, no key needed
-  if ((await openSessions()).length > 0) {
+  if ((await openSessions()).length > 0 && (await getToken())) {
     try {
       await stopOpenSessions(await api())
     } catch (err) {
@@ -217,6 +227,7 @@ async function startSession(
   signal: AbortSignal
 ): Promise<void> {
   if (!nodeId) throw new AppError("no_node")
+  if (!(await hasSiteAccess())) throw new AppError("site_access_required")
   if (
     process.env.PLASMO_BROWSER === "firefox" &&
     !(await ext.extension.isAllowedIncognitoAccess())
@@ -256,6 +267,7 @@ async function startSession(
   // Connected means traffic gets through, not only that the node is ready
   // (Chrome checked it before routing the whole browser; check it again).
   if (!(await checkTunnel())) throw new AppError("node_unavailable")
+  if ((await readProxyControl()) !== "on") throw new AppError("proxy_blocked")
   signal.throwIfAborted()
   const view: SessionView = {
     node_number: nodeId,
@@ -293,7 +305,7 @@ export function connect(nodeId: string): Promise<Result> {
     } catch (err) {
       const error = ctrl.signal.aborted ? "cancelled" : toErrorCode(err)
       await teardown(error === "cancelled" ? undefined : error)
-      if (error === "auth_expired") await storage.set(KEYS.authExpired, true)
+      if (error === "auth_expired") await markAuthExpired()
       return { ok: false, error } as const
     } finally {
       if (starting === ctrl) starting = null
@@ -310,11 +322,41 @@ export function disconnect(): Promise<Result> {
   })
 }
 
+export function replaceCredentials(key?: string): Promise<void> {
+  starting?.abort()
+  return serial(async () => {
+    await teardown()
+    if (!key && (await openSessions()).length > 0) {
+      throw new AppError("stop_pending")
+    }
+    await clearData()
+    if (key) await setToken(key)
+  })
+}
+
+async function markAuthExpired() {
+  await clearData()
+  await storage.set(KEYS.authExpired, true)
+}
+
+export function refreshAccount(force = false): Promise<void> {
+  return serial(async () => {
+    if (!(await getToken())) return
+    try {
+      await refreshData(force)
+    } catch (err) {
+      if (toErrorCode(err) !== "auth_expired") throw err
+      await teardown("auth_expired")
+      await markAuthExpired()
+    }
+  })
+}
+
 /**
  * Whether the session is still up as the browser and the API see it: on a
  * browser start, a service-worker wake, every watchdog tick and proxy error.
  */
-export function check(): Promise<void> {
+export function check(verifyTunnel = false): Promise<void> {
   return serial(async () => {
     const status = await storage.get<ProxyStatus>(KEYS.proxyStatus)
     const control = await readProxyControl()
@@ -330,12 +372,15 @@ export function check(): Promise<void> {
       return
     }
     if (control !== "on") return teardown("proxy_blocked")
+    if (verifyTunnel && !(await checkTunnel()))
+      return stopBecause("session_ended")
 
     const uuid = await storage.get<string>(KEYS.uuid)
     if (!uuid) return teardown()
     try {
       const client = await api()
       const info = await client.info(uuid)
+      if (!info.ready) return stopBecause("session_ended")
       const settings =
         (await storage.get<Settings>(KEYS.settings)) ?? DEFAULT_SETTINGS
       const view = await storage.get<SessionView>(KEYS.session)
@@ -360,7 +405,7 @@ export function check(): Promise<void> {
         isLow(balance, view.start_balance)
       ) {
         await storage.set(KEYS.session, { ...view, warned: true })
-        alert(
+        await alert(
           `Balance is running low: $${Math.max(0, balance).toFixed(2)} left.`
         )
       }
@@ -369,7 +414,7 @@ export function check(): Promise<void> {
       if (code === "node_unavailable") await stopBecause("session_ended")
       else if (code === "auth_expired") {
         await teardown("auth_expired")
-        await storage.set(KEYS.authExpired, true)
+        await markAuthExpired()
       }
       // a network blip: keep the session, the next tick checks again
     }
@@ -379,7 +424,7 @@ export function check(): Promise<void> {
 /** The background ends the session on its own: say why, popup open or not. */
 async function stopBecause(code: ErrorCode): Promise<void> {
   await teardown(code)
-  alert(ERROR_TEXT[code])
+  await alert(ERROR_TEXT[code])
 }
 
 /** Below $0.25, or below 10% of the balance at the start, whichever is higher. */
@@ -391,7 +436,10 @@ export function isLow(balance: number, startBalance: number): boolean {
  * The login the node's proxy asks for (407), when the session up has one:
  * from memory, or from the API after the worker restarted.
  */
-export async function proxyLogin(challenger: string): Promise<Login | null> {
+export async function proxyLogin(challenger: {
+  host: string
+  port: number
+}): Promise<Login | null> {
   if (
     !login &&
     (await storage.get<ProxyStatus>(KEYS.proxyStatus)) === "Connected"
@@ -404,7 +452,10 @@ export async function proxyLogin(challenger: string): Promise<Login | null> {
       console.warn("Proxy login unavailable:", toErrorCode(err))
     }
   }
-  return login && login.host === challenger ? login : null
+  const host = challenger.host.toLowerCase().replace(/^\[|\]$/g, "")
+  return login && login.host === host && login.port === challenger.port
+    ? login
+    : null
 }
 
 export const iconState = (status?: ProxyStatus | null): IconState =>

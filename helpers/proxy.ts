@@ -6,6 +6,7 @@ import { ext, type AuthDetails, type AuthResponse } from "./platform"
 export type ProxyEndpoint = {
   host: string
   port: number
+  scheme?: "http" | "https"
   username?: string
   password?: string
 }
@@ -24,30 +25,38 @@ export function parseProxyConfig(config: unknown): ProxyEndpoint | null {
       return null
     }
   }
+  let scheme: unknown
   let host: unknown
   let port: unknown
   let username: unknown
   let password: unknown
   if (config && typeof config === "object") {
     const c = config as Record<string, unknown>
-    host = c.ip ?? c.host
+    scheme = c.scheme
+    host = scheme === "https" ? c.host ?? c.ip : c.ip ?? c.host
     port = c.port
     username = c.username ?? c.user ?? c.login
     password = c.password ?? c.pass
   } else if (typeof config === "string") {
     const m =
-      /^(?:https?:\/\/)?(?:([^:@\s/]+):([^@\s/]*)@)?(\[[0-9a-f:]+\]|[^\s:/@]+):(\d{1,5})\/?$/i.exec(
+      /^(?:(https?):\/\/)?(?:([^:@\s/]+):([^@\s/]*)@)?(\[[0-9a-f:]+\]|[^\s:/@]+):(\d{1,5})\/?$/i.exec(
         config.trim()
       )
     if (m) {
-      username = m[1] && decodeURIComponent(m[1])
-      password = m[2] && decodeURIComponent(m[2])
-      host = m[3]
-      port = m[4]
+      scheme = m[1]?.toLowerCase()
+      try {
+        username = m[2] && decodeURIComponent(m[2])
+        password = m[3] && decodeURIComponent(m[3])
+      } catch {
+        return null
+      }
+      host = m[4]
+      port = m[5]
     }
   }
   const p = Number(port)
   if (
+    (scheme !== undefined && scheme !== "http" && scheme !== "https") ||
     typeof host !== "string" ||
     !host ||
     !Number.isInteger(p) ||
@@ -56,9 +65,20 @@ export function parseProxyConfig(config: unknown): ProxyEndpoint | null {
   ) {
     return null
   }
+  let hostname: string
+  try {
+    const bare = host.replace(/^\[|\]$/g, "")
+    if (!/^[a-z0-9.:-]+$/i.test(bare)) return null
+    hostname = new URL(
+      `http://${bare.includes(":") ? `[${bare}]` : bare}`
+    ).hostname.replace(/^\[|\]$/g, "")
+  } catch {
+    return null
+  }
   const endpoint: ProxyEndpoint = {
-    host: host.replace(/^\[|\]$/g, ""),
-    port: p
+    host: hostname,
+    port: p,
+    ...(scheme === "https" && { scheme })
   }
   if (
     typeof username === "string" &&
@@ -75,13 +95,13 @@ export function parseProxyConfig(config: unknown): ProxyEndpoint | null {
 export type ProxyControl = "on" | "off" | "blocked"
 
 export function chromeProxyConfig(
-  { host, port }: ProxyEndpoint,
+  { host, port, scheme = "http" }: ProxyEndpoint,
   extra: string[] = []
 ) {
   return {
     mode: "fixed_servers",
     rules: {
-      singleProxy: { scheme: "http", host, port },
+      singleProxy: { scheme, host, port },
       bypassList: bypassList(extra)
     }
   }
@@ -153,6 +173,7 @@ export async function applyProxy(
   endpoint: ProxyEndpoint,
   extra: string[] = []
 ): Promise<void> {
+  if (extra.some(isProbeBypass)) throw new AppError("probe_bypassed")
   if ((await readProxyControl()) === "blocked") {
     throw new AppError("proxy_blocked")
   }
@@ -161,6 +182,7 @@ export async function applyProxy(
     throw new AppError("node_unavailable")
   }
   if (IS_FIREFOX) {
+    if (endpoint.scheme === "https") throw new AppError("proxy_failed")
     await ext.proxy.settings.set({ value: firefoxProxyConfig(endpoint, extra) })
   } else {
     await ext.proxy.settings.set({
@@ -168,7 +190,12 @@ export async function applyProxy(
       scope: "regular"
     })
   }
-  await setWebRtcProtection(true)
+  if ((await readProxyControl()) !== "on") throw new AppError("proxy_blocked")
+  try {
+    await setWebRtcProtection(true)
+  } catch {
+    throw new AppError("webrtc_failed")
+  }
 }
 
 /** Back to a direct connection; never throws. */
@@ -187,11 +214,15 @@ export async function clearProxy(): Promise<void> {
  */
 async function setWebRtcProtection(on: boolean): Promise<void> {
   const policy = ext.privacy?.network?.webRTCIPHandlingPolicy
-  if (!policy) return
   try {
-    if (on) await policy.set({ value: "disable_non_proxied_udp" })
-    else await policy.clear({})
+    if (on) {
+      if (!policy) throw new AppError("webrtc_failed")
+      await policy.set({ value: "disable_non_proxied_udp" })
+      if ((await policy.get({})).value !== "disable_non_proxied_udp")
+        throw new AppError("webrtc_failed")
+    } else await policy?.clear({})
   } catch (err) {
+    if (on) throw err
     console.error("WebRTC policy change failed:", (err as Error)?.message)
   }
 }
@@ -209,16 +240,18 @@ export function onProxyError(cb: () => void): void {
  */
 export function onProxyAuth(
   loginFor: (
-    challenger: string
+    challenger: NonNullable<AuthDetails["challenger"]>
   ) => Promise<{ username: string; password: string } | null>
 ): void {
   const asked = new Set<string>()
   const answer = async (d: AuthDetails): Promise<AuthResponse> => {
     if (!d.isProxy || !d.challenger) return {}
     if (asked.has(d.requestId)) return { cancel: true }
-    asked.add(d.requestId)
-    setTimeout(() => asked.delete(d.requestId), 60_000)
-    const login = await loginFor(d.challenger.host)
+    const login = await loginFor(d.challenger)
+    if (login) {
+      asked.add(d.requestId)
+      setTimeout(() => asked.delete(d.requestId), 60_000)
+    }
     return login
       ? {
           authCredentials: {
@@ -237,7 +270,7 @@ export function onProxyAuth(
   } else {
     // Chrome MV3: the answer goes to a callback (webRequestAuthProvider)
     ext.webRequest?.onAuthRequired.addListener(
-      (d, callback) => void answer(d).then(callback),
+      (d, callback) => void answer(d).then(callback, () => callback?.({})),
       filter,
       ["asyncBlocking"]
     )
@@ -246,13 +279,22 @@ export function onProxyAuth(
 
 // A tiny response through the node, outside the bypass list.
 const TUNNEL_CHECK_HOST = "www.gstatic.com"
+export function isProbeBypass(site: string): boolean {
+  const host = normalizeSite(site)
+  return (
+    host !== null &&
+    (host === TUNNEL_CHECK_HOST || TUNNEL_CHECK_HOST.endsWith(`.${host}`))
+  )
+}
 const TUNNEL_CHECK_URL = `https://${TUNNEL_CHECK_HOST}/generate_204`
 
 /** Only the check goes through the node; everything else stays direct. */
-export function warmUpPac({ host, port }: ProxyEndpoint): string {
+export function warmUpPac({ host, port, scheme }: ProxyEndpoint): string {
   return `function FindProxyForURL(url, host) {
   return host === ${JSON.stringify(TUNNEL_CHECK_HOST)} ? ${JSON.stringify(
-    `PROXY ${host}:${port}`
+    `${scheme === "https" ? "HTTPS" : "PROXY"} ${
+      host.includes(":") ? `[${host}]` : host
+    }:${port}`
   )} : "DIRECT";
 }`
 }
@@ -283,9 +325,11 @@ export async function checkTunnel(timeoutMs = 15_000): Promise<boolean> {
   try {
     const res = await fetch(TUNNEL_CHECK_URL, {
       cache: "no-store",
+      credentials: "omit",
+      redirect: "error",
       signal: AbortSignal.timeout(timeoutMs)
     })
-    return res.status === 204 || res.ok
+    return res.status === 204
   } catch {
     return false
   }

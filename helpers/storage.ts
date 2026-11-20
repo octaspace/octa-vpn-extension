@@ -33,7 +33,6 @@ const ACCOUNT_KEYS = [
   KEYS.nodesAt,
   KEYS.session,
   KEYS.uuid,
-  KEYS.openSessions,
   KEYS.lastError
 ]
 

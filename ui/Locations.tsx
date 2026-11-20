@@ -68,7 +68,7 @@ export function Locations({ onBack, toast }: Props) {
 
   return (
     <>
-      <header className="header back">
+      <header className="header back popup-header">
         <button className="icon-btn" aria-label="Back" onClick={onBack}>
           <BackIcon />
         </button>
@@ -76,7 +76,7 @@ export function Locations({ onBack, toast }: Props) {
       </header>
 
       <main className="body">
-        <div className="pad">
+        <div className="pad location-controls">
           <label className="sr-only" htmlFor="search">
             Search locations
           </label>
@@ -115,21 +115,18 @@ export function Locations({ onBack, toast }: Props) {
         </div>
 
         {groups.length === 0 ? (
-          <p
-            className="muted"
-            style={{ margin: 0, padding: "8px 16px", textAlign: "center" }}>
+          <p className="muted location-empty">
             {nodes.length
               ? "Nothing matches your search."
               : "No nodes offer the browser VPN right now. Try again later."}
           </p>
         ) : (
-          <ul style={{ listStyle: "none", margin: 0, padding: "0 8px 12px" }}>
+          <ul className="location-list">
             {groups.map((g) => (
               <li key={g.country}>
-                <div style={{ display: "flex", alignItems: "center" }}>
+                <div className="location-country">
                   <button
                     className="row"
-                    style={{ flexGrow: 1 }}
                     onClick={() =>
                       choose({ kind: "country", country: g.country })
                     }>
@@ -161,8 +158,7 @@ export function Locations({ onBack, toast }: Props) {
                   g.nodes.map((n) => (
                     <button
                       key={n.node_number}
-                      className="row"
-                      style={{ paddingLeft: 56 }}
+                      className="row location-node"
                       onClick={() =>
                         choose({ kind: "node", node_number: n.node_number })
                       }>

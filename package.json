@@ -46,7 +46,16 @@
     "browser_specific_settings": {
       "gecko": {
         "id": "octavpn@octa.space",
-        "strict_min_version": "91.1.0"
+        "strict_min_version": "140.0",
+        "data_collection_permissions": {
+          "required": [
+            "authenticationInfo",
+            "browsingActivity",
+            "financialAndPaymentInfo",
+            "locationInfo",
+            "websiteContent"
+          ]
+        }
       }
     },
     "permissions": [
@@ -55,11 +64,17 @@
       "storage",
       "alarms",
       "privacy",
-      "notifications",
       "webRequest",
       "webRequestAuthProvider"
     ],
     "host_permissions": [
+      "https://api.octa.space/*",
+      "https://console.octa.space/*"
+    ],
+    "optional_permissions": [
+      "notifications"
+    ],
+    "optional_host_permissions": [
       "<all_urls>"
     ],
     "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwJ9ASVnZJqzZQzGui/HMHhv7AIZPkvYLOYn258TQUWyOr/VJxJoJOH0oVzGeZQqQSQWj8ItuXJ/nHg5FCrQPq41YvfL3PpUbQlbMkudU3dLH8gCMrIpmbsHD5kYQnGLBiP9FULuM/A2MMHelYX3zJJ2g1sgw8bMp+NNVQGJhQNUyqf42OjyJvTJiu2WdCyvg7SA7WTmHSsNgNXreCxM4nZmbvmWAmfOJJxIJn+D/sgjn9sZdLlqUI25B3aEL6uIai6+PQ8qvk6aQonCSSiadO21pOePbqiXea6albBDoSBpIj/hryYiKV0GkFAiQjScozohvW2mehnt0lAm/YfaBkwIDAQAB"

@@ -1,7 +1,7 @@
 import { ext, toolbarAction } from "./platform"
 
 // The toolbar icon says the state, without a text badge over the logo:
-// greyed out when disconnected, in colour with a small status dot in the
+// muted purple when disconnected, in colour with a status dot in the
 // corner while connecting (amber) and connected (green).
 
 export type IconState = "off" | "busy" | "on"
@@ -29,12 +29,10 @@ function draw(bitmap: ImageBitmap, size: number, state: IconState): ImageData {
   const canvas = new OffscreenCanvas(size, size)
   const ctx = canvas.getContext("2d")!
   if (state === "off") {
-    ctx.filter = "grayscale(1) brightness(1.9)"
-    ctx.globalAlpha = 0.85
+    ctx.filter = "saturate(0.75) contrast(0.82) brightness(1.6)"
   }
   ctx.drawImage(bitmap, 0, 0, size, size)
   ctx.filter = "none"
-  ctx.globalAlpha = 1
   if (state !== "off") {
     const r = size * 0.19
     const c = size - r - size * 0.04

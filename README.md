@@ -19,7 +19,7 @@ npm run firefox    # Firefox: build/firefox-mv2-prod and build/firefox-mv2-prod.
 Then load it:
 
 - **Chrome:** open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked** and select `build/chrome-mv3-prod`.
-- **Firefox:** open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on…** and select `build/firefox-mv2-prod/manifest.json`. Then, in the add-on's settings, set **Run in Private Windows** to **Allow**: Firefox lets an extension set the proxy only with this permission.
+- **Firefox (desktop 140+):** open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on…** and select `build/firefox-mv2-prod/manifest.json`. Then, in the add-on's settings, set **Run in Private Windows** to **Allow**: Firefox lets an extension set the proxy only with this permission.
 
 ## Signing in
 
@@ -41,7 +41,7 @@ The dashboard issues the extension an API key of your account. It is listed in t
 2. Click **Connect**. The node needs a few seconds, up to a minute, to start the proxy. **Cancel** stops the start.
 3. While connected, the home screen shows the exit address and the session's time, traffic and charge.
 
-**Disconnect** stops the session on the node. The extension keeps working with the popup closed: it watches the session in the background and tells you with a notification if the session ends.
+**Disconnect** requests a stop on the node. The background watches the session with the popup closed. The popup shows why the session ended. Enable **Settings → System notifications** to receive alerts with the popup closed.
 
 ## What you pay
 
@@ -49,19 +49,24 @@ The dashboard issues the extension an API key of your account. It is listed in t
 | --- | --- |
 | Price | Per GB of traffic, set by the node. Nothing else is charged. |
 | To start | Your balance must cover at least 1 GB at the node's price. |
-| Spending limit | **Settings → Limit per session** stops the session when its charge reaches the limit. |
-| Low balance | With **Warn when the balance runs low** on, a notification comes once a session when the balance falls below $0.25 or below 10% of what it was at the start. |
+| Spending limit | **Settings → Limit per session** checks accrued charges periodically and requests a stop once the target is reached. Charges may exceed the target before the next check. |
+| Low balance | With system notifications and **Warn when the balance runs low** on, a notification comes once a session when the balance falls below $0.25 or below 10% of what it was at the start. |
 | Stops by itself | A session stops when the balance runs out, and after a long time without traffic. |
 
 Top up the balance in the [OctaSpace dashboard](https://console.octa.space).
 
+**Sign out** stops the running session and clears local account data, including the key stored by the extension. If the node has yet to confirm the stop, try signing out again.
+
 ## Privacy and security
 
 - **What goes through the node:** every site you open, except those in **Settings → Sites that skip the VPN** (each with its subdomains) and the OctaSpace API and dashboard.
-- **Encryption:** HTTPS sites stay encrypted end to end; the node sees only which host you connect to. Plain HTTP sites are readable by the node.
+- **Encryption:** HTTPS websites protect their contents end to end. The node sees the destination host and can read plain HTTP traffic. With an HTTP proxy, the first hop to the node also exposes the destination host and any Basic proxy credentials to the network. Chromium supports HTTPS proxy endpoints when the service explicitly returns one.
+- **Connection check:** the extension sends a request to Google’s `www.gstatic.com/generate_204` when setting up the proxy and after a fatal proxy error. It omits browser credentials. A successful check establishes reachability.
 - **WebRTC:** while connected, WebRTC is limited to the proxy, so sites cannot read your real address through it.
 - **The node's proxy** accepts only this session's login, a new one for every session. The extension keeps it in memory and gives it only to that node; it is never stored.
 - **Your API key** is stored in the extension's local storage, readable by this extension only.
+
+OctaSpace receives account authentication and billing data and derives the browser’s approximate location from its IP. The selected node processes traffic routed through it. It sees destination hosts and, for unencrypted traffic, the request and response contents. Firefox shows these categories in its data consent prompt.
 
 ## Permissions
 
@@ -70,11 +75,11 @@ Top up the balance in the [OctaSpace dashboard](https://console.octa.space).
 | `proxy` | Route the browser through the node, and back to a direct connection. |
 | `privacy` | Limit WebRTC to the proxy while connected. |
 | `webRequest`, `webRequestAuthProvider` (Firefox: `webRequestBlocking`) | Answer the node's request for the session's login. |
-| Access to all sites | Required by the browser for the login answer above; the extension does not read or change pages. |
+| Access to all sites | Required for authentication challenges from requests to arbitrary sites. Chromium asks when you select Connect. Firefox requires the permission for proxy authentication. |
 | `identity` | Sign in through the OctaSpace dashboard. |
 | `storage` | Keep your key, chosen location and settings. |
 | `alarms` | Check the running session every 30 seconds. |
-| `notifications` | Tell you when a session ends or the balance runs low. |
+| `notifications` (optional) | Sends system alerts when a session ends or the balance runs low, if enabled in Settings. |
 
 ## Troubleshooting
 
