@@ -156,6 +156,10 @@ export async function applyProxy(
   if ((await readProxyControl()) === "blocked") {
     throw new AppError("proxy_blocked")
   }
+  if (!IS_FIREFOX && !(await warmUp(endpoint))) {
+    await clearProxy()
+    throw new AppError("node_unavailable")
+  }
   if (IS_FIREFOX) {
     await ext.proxy.settings.set({ value: firefoxProxyConfig(endpoint, extra) })
   } else {
@@ -241,7 +245,33 @@ export function onProxyAuth(
 }
 
 // A tiny response through the node, outside the bypass list.
-const TUNNEL_CHECK_URL = "https://www.gstatic.com/generate_204"
+const TUNNEL_CHECK_HOST = "www.gstatic.com"
+const TUNNEL_CHECK_URL = `https://${TUNNEL_CHECK_HOST}/generate_204`
+
+/** Only the check goes through the node; everything else stays direct. */
+export function warmUpPac({ host, port }: ProxyEndpoint): string {
+  return `function FindProxyForURL(url, host) {
+  return host === ${JSON.stringify(TUNNEL_CHECK_HOST)} ? ${JSON.stringify(
+    `PROXY ${host}:${port}`
+  )} : "DIRECT";
+}`
+}
+
+/**
+ * Chrome: the proxy's login is answered for requests this extension sees,
+ * then kept in the browser's cache. A tab already open (the new tab page
+ * above all) sends requests the extension cannot see: if one met the proxy
+ * before the cache had the login, the browser would ask the user. So the
+ * check runs first with only itself routed to the node, and the whole
+ * browser follows once the login is cached.
+ */
+async function warmUp(endpoint: ProxyEndpoint): Promise<boolean> {
+  await ext.proxy.settings.set({
+    value: { mode: "pac_script", pacScript: { data: warmUpPac(endpoint) } },
+    scope: "regular"
+  })
+  return checkTunnel()
+}
 
 /**
  * One request through the node, from the extension itself: it proves the

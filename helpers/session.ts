@@ -253,7 +253,8 @@ async function startSession(
   } catch (err) {
     throw err instanceof AppError ? err : new AppError("proxy_failed")
   }
-  // Connected means traffic gets through, not only that the node is ready.
+  // Connected means traffic gets through, not only that the node is ready
+  // (Chrome checked it before routing the whole browser; check it again).
   if (!(await checkTunnel())) throw new AppError("node_unavailable")
   signal.throwIfAborted()
   const view: SessionView = {

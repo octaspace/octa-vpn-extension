@@ -156,3 +156,17 @@ describe("proxy login", () => {
     })
   })
 })
+
+describe("warm-up PAC", () => {
+  it("routes only the check host through the node", async () => {
+    const { warmUpPac } = await import("~helpers/proxy")
+    const pac = warmUpPac({ host: "203.0.113.7", port: 3128 })
+    const FindProxyForURL = new Function(`${pac}; return FindProxyForURL`)()
+    expect(
+      FindProxyForURL("https://www.gstatic.com/generate_204", "www.gstatic.com")
+    ).toBe("PROXY 203.0.113.7:3128")
+    expect(FindProxyForURL("https://example.com/", "example.com")).toBe(
+      "DIRECT"
+    )
+  })
+})
