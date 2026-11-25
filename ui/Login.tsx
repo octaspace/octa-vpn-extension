@@ -1,26 +1,35 @@
 import { useState } from "react"
 import logo from "url:~assets/icon.png"
 
-import { send } from "~helpers/messages"
+import type { ErrorCode } from "~helpers/errors"
+import type { Request } from "~helpers/messages"
+import { ext } from "~helpers/platform"
 
 import { Globe } from "./Globe"
 import { ERROR_TEXT } from "./state"
 
 /** Sign-in through the OctaSpace dashboard (OAuth); it issues this app its API key. */
-export function Login({ onSignedIn }: { onSignedIn: () => void }) {
+export function Login({ signInError }: { signInError: ErrorCode | null }) {
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState("")
+  const [connectionError, setConnectionError] = useState(false)
 
   // The background runs the flow: this popup may not survive the auth window.
   async function signIn() {
     setBusy(true)
-    setError("")
-    const res = await send({ type: "login" })
-    setBusy(false)
-    if (res.ok) onSignedIn()
-    else if (res.error !== "cancelled")
-      setError(ERROR_TEXT[res.error ?? "unknown"])
+    setConnectionError(false)
+    try {
+      const reply = await ext.runtime.sendMessage({
+        type: "login"
+      } satisfies Request)
+      setConnectionError(!reply)
+    } catch {
+      setConnectionError(true)
+    } finally {
+      setBusy(false)
+    }
   }
+
+  const error = signInError ?? (connectionError ? "unknown" : null)
 
   return (
     <>
@@ -46,7 +55,7 @@ export function Login({ onSignedIn }: { onSignedIn: () => void }) {
           </button>
           {error && (
             <p role="alert" className="popup-error">
-              {error}
+              {ERROR_TEXT[error]}
             </p>
           )}
         </div>

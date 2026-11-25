@@ -1,14 +1,19 @@
 import { useCallback, useEffect, useLayoutEffect, useState } from "react"
 
 import { send } from "~helpers/messages"
-import { tokenExists } from "~helpers/storage"
+import { tokenExists, watchToken } from "~helpers/storage"
 
 import { Home } from "./Home"
 import { AlertIcon } from "./icons"
 import { Locations } from "./Locations"
 import { Login } from "./Login"
 import { Settings } from "./Settings"
-import { ERROR_TEXT, useAuthExpired, useSettings } from "./state"
+import {
+  ERROR_TEXT,
+  useAuthExpired,
+  useSettings,
+  useSignInError
+} from "./state"
 
 type Screen = "loading" | "login" | "home" | "locations" | "settings"
 
@@ -16,6 +21,7 @@ export function App() {
   const [screen, setScreen] = useState<Screen>("loading")
   const [toastText, setToastText] = useState("")
   const authExpired = useAuthExpired()
+  const signInError = useSignInError()
   const [settings] = useSettings()
 
   const toast = useCallback((text: string) => {
@@ -51,6 +57,41 @@ export function App() {
     if (authExpired && screen !== "login") signedOut(true)
   }, [authExpired, screen, signedOut])
 
+  useEffect(() => {
+    if (screen !== "login" || authExpired) return
+    let active = true
+    let revision = 0
+    let stopWatching: (() => void) | undefined
+
+    const checkToken = async () => {
+      const current = ++revision
+      try {
+        const signedIn = await tokenExists()
+        if (!active || current !== revision || !signedIn) return
+        setScreen("home")
+        void load(true)
+      } catch {
+        if (active && current === revision) toast(ERROR_TEXT.unknown)
+      }
+    }
+
+    void watchToken(checkToken)
+      .then((stop) => {
+        if (!active) return stop()
+        stopWatching = stop
+        // Cover a sign-in that finished before the listener was installed.
+        return checkToken()
+      })
+      .catch(() => {
+        if (active) toast(ERROR_TEXT.unknown)
+      })
+
+    return () => {
+      active = false
+      stopWatching?.()
+    }
+  }, [authExpired, load, screen, toast])
+
   useLayoutEffect(() => {
     const preference = matchMedia("(prefers-color-scheme: dark)")
     const applyTheme = () => {
@@ -80,14 +121,7 @@ export function App() {
           <span className="spinner muted" aria-label="Loading" />
         </main>
       )}
-      {screen === "login" && (
-        <Login
-          onSignedIn={() => {
-            setScreen("home")
-            void load(true)
-          }}
-        />
-      )}
+      {screen === "login" && <Login signInError={signInError} />}
       {screen === "home" && (
         <Home
           onLocations={() => setScreen("locations")}

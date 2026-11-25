@@ -36,6 +36,8 @@ export const useSession = () =>
 export const useLastError = () =>
   useStoredValue<ErrorCode | "">(KEYS.lastError, "")[0]
 export const useAuthExpired = () => useStoredValue(KEYS.authExpired, false)[0]
+export const useSignInError = () =>
+  useStoredValue<ErrorCode | null>(KEYS.signInError, null)[0]
 export const useSelection = () =>
   useStoredValue<Selection>(KEYS.selection, BEST)
 export function useSettings() {

@@ -38,6 +38,7 @@ export interface ExtensionApi {
   }
   extension: { isAllowedIncognitoAccess(): Promise<boolean> }
   runtime: typeof chrome.runtime
+  storage: typeof chrome.storage
   alarms: typeof chrome.alarms
   permissions: typeof chrome.permissions
   action?: typeof chrome.action

@@ -15,7 +15,7 @@ import {
   replaceCredentials,
   type ProxyStatus
 } from "~helpers/session"
-import { KEYS, storage } from "~helpers/storage"
+import { KEYS, storage, storeSignInError } from "~helpers/storage"
 import { showState } from "~helpers/toolbar"
 
 async function attempt(task: () => Promise<void>): Promise<Response> {
@@ -25,6 +25,17 @@ async function attempt(task: () => Promise<void>): Promise<Response> {
   } catch (err) {
     return { ok: false, error: toErrorCode(err) }
   }
+}
+
+let signInAttempt: Promise<Response> | undefined
+
+async function signIn(): Promise<Response> {
+  await storeSignInError()
+  const result = await attempt(login)
+  // The OAuth window can take focus from the popup before the reply arrives.
+  if (!result.ok && result.error !== "cancelled")
+    await storeSignInError(result.error ?? "unknown")
+  return result
 }
 
 async function handle(request: Request): Promise<Response> {
@@ -38,7 +49,10 @@ async function handle(request: Request): Promise<Response> {
       await check()
       return { ok: true }
     case "login":
-      return attempt(login)
+      signInAttempt ??= signIn().finally(() => {
+        signInAttempt = undefined
+      })
+      return signInAttempt
     case "refreshAccount":
       return attempt(() => refreshAccount(request.force))
     case "signOut":
