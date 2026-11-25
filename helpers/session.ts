@@ -16,7 +16,7 @@ import {
 import { refreshData } from "./data"
 import { AppError, ERROR_TEXT, toErrorCode, type ErrorCode } from "./errors"
 import {
-  DEFAULT_SETTINGS,
+  settingsWithDefaults,
   type SessionView,
   type Settings,
   type VpnNode
@@ -257,8 +257,9 @@ async function startSession(
   signal.throwIfAborted()
 
   try {
-    const settings =
-      (await storage.get<Settings>(KEYS.settings)) ?? DEFAULT_SETTINGS
+    const settings = settingsWithDefaults(
+      await storage.get<Partial<Settings>>(KEYS.settings)
+    )
     keepLogin(info.endpoint)
     await applyProxy(info.endpoint, settings.bypassSites)
   } catch (err) {
@@ -381,8 +382,9 @@ export function check(verifyTunnel = false): Promise<void> {
       const client = await api()
       const info = await client.info(uuid)
       if (!info.ready) return stopBecause("session_ended")
-      const settings =
-        (await storage.get<Settings>(KEYS.settings)) ?? DEFAULT_SETTINGS
+      const settings = settingsWithDefaults(
+        await storage.get<Partial<Settings>>(KEYS.settings)
+      )
       const view = await storage.get<SessionView>(KEYS.session)
       if (view) {
         await storage.set(KEYS.session, {
