@@ -1,8 +1,11 @@
+import { useMemo } from "react"
+
 import { useStorage } from "@plasmohq/storage/hook"
 
 import type { ErrorCode } from "~helpers/errors"
 import {
   DEFAULT_SETTINGS,
+  settingsWithDefaults,
   type Geo,
   type Selection,
   type SessionView,
@@ -12,21 +15,33 @@ import {
 import type { ProxyStatus } from "~helpers/session"
 import { KEYS, storage } from "~helpers/storage"
 
-// Live views of storage: the background writes, every open popup re-renders.
+// A static fallback keeps hydration read-only. The storage watcher still
+// emits undefined when the background removes a key during sign-out.
+function useStoredValue<T>(key: string, fallback: T) {
+  const [value, setValue] = useStorage<T>({ key, instance: storage }, fallback)
+  return [value ?? fallback, setValue] as const
+}
 
-const use = <T>(key: string, fallback: T) =>
-  useStorage<T>({ key, instance: storage }, (v) => v ?? fallback)
+const NO_NODES: VpnNode[] = []
+const BEST: Selection = { kind: "best" }
 
-export const useBalance = () => use<number | null>(KEYS.balance, null)[0]
-export const useGeo = () => use<Geo | null>(KEYS.geo, null)[0]
-export const useNodes = () => use<VpnNode[]>(KEYS.nodes, [])[0]
+export const useBalance = () =>
+  useStoredValue<number | null>(KEYS.balance, null)[0]
+export const useGeo = () => useStoredValue<Geo | null>(KEYS.geo, null)[0]
+export const useNodes = () => useStoredValue(KEYS.nodes, NO_NODES)[0]
 export const useStatus = () =>
-  use<ProxyStatus>(KEYS.proxyStatus, "Disconnected")[0]
-export const useSession = () => use<SessionView | null>(KEYS.session, null)[0]
-export const useLastError = () => use<ErrorCode | "">(KEYS.lastError, "")[0]
-export const useAuthExpired = () => use<boolean>(KEYS.authExpired, false)[0]
+  useStoredValue<ProxyStatus>(KEYS.proxyStatus, "Disconnected")[0]
+export const useSession = () =>
+  useStoredValue<SessionView | null>(KEYS.session, null)[0]
+export const useLastError = () =>
+  useStoredValue<ErrorCode | "">(KEYS.lastError, "")[0]
+export const useAuthExpired = () => useStoredValue(KEYS.authExpired, false)[0]
 export const useSelection = () =>
-  use<Selection>(KEYS.selection, { kind: "best" })
-export const useSettings = () => use<Settings>(KEYS.settings, DEFAULT_SETTINGS)
+  useStoredValue<Selection>(KEYS.selection, BEST)
+export function useSettings() {
+  const [stored, setSettings] = useStoredValue(KEYS.settings, DEFAULT_SETTINGS)
+  const settings = useMemo(() => settingsWithDefaults(stored), [stored])
+  return [settings, setSettings] as const
+}
 
 export { ERROR_TEXT } from "~helpers/errors"

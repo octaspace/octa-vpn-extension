@@ -70,4 +70,11 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: "system"
 }
 
+/** Stored settings, with the fields an older version did not save filled in. */
+export function settingsWithDefaults(
+  stored: Partial<Settings> | null | undefined
+): Settings {
+  return { ...DEFAULT_SETTINGS, ...stored }
+}
+
 export const SPEND_LIMITS = [0, 0.1, 0.5, 1, 5]
