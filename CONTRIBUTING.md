@@ -6,7 +6,7 @@
 
 ## Setup
 
-Node.js 22 or newer.
+Node.js 22 or newer and npm 11 or newer (`npm install -g npm@11`). npm 10 and npm 11 write different lockfiles, so npm 10 is refused.
 
 ```bash
 npm ci
