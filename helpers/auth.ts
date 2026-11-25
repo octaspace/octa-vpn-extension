@@ -105,7 +105,19 @@ export async function login(): Promise<void> {
       ),
       interactive: true
     })
-    .catch(() => undefined)
+    .catch((error: unknown) => {
+      const message =
+        typeof error === "object" && error !== null && "message" in error
+          ? error.message
+          : undefined
+      if (
+        message === "The user did not approve access." ||
+        message === "User cancelled or denied access."
+      ) {
+        return undefined
+      }
+      throw new AppError("auth_failed")
+    })
   if (!responseUrl) throw new AppError("cancelled")
 
   const params = new URL(responseUrl).searchParams
