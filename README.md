@@ -66,7 +66,7 @@ Top up the balance in the [OctaSpace dashboard](https://console.octa.space).
 - **The node's proxy** accepts only this session's login, a new one for every session. The extension keeps it in memory and gives it only to that node; it is never stored.
 - **Your API key** is stored in the extension's local storage, readable by this extension only.
 
-OctaSpace receives account authentication and billing data and derives the browser’s approximate location from its IP. The selected node processes traffic routed through it. It sees destination hosts and, for unencrypted traffic, the request and response contents. Firefox shows these categories in its data consent prompt.
+OctaSpace receives account authentication data, bills the session on its side and derives the browser’s approximate location from its IP. The extension sends no payment data. The selected node processes traffic routed through it. It sees destination hosts and, for unencrypted traffic, the request and response contents. Firefox shows these categories in its data consent prompt.
 
 ## Permissions
 
@@ -75,7 +75,7 @@ OctaSpace receives account authentication and billing data and derives the brows
 | `proxy` | Route the browser through the node, and back to a direct connection. |
 | `privacy` | Limit WebRTC to the proxy while connected. |
 | `webRequest`, `webRequestAuthProvider` (Firefox: `webRequestBlocking`) | Answer the node's request for the session's login. |
-| Access to all sites | Required for authentication challenges from requests to arbitrary sites. Chromium asks when you select Connect. Firefox requires the permission for proxy authentication. |
+| Access to all sites | Answer the node's login request for any site you open. Asked for when you first select Connect. |
 | `identity` | Sign in through the OctaSpace dashboard. |
 | `storage` | Keep your key, chosen location and settings. |
 | `alarms` | Check the running session every 30 seconds. |
