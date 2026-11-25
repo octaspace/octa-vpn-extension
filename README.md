@@ -8,7 +8,7 @@ A browser extension that sends your browser's traffic through an OctaSpace node 
 
 Supported browsers: Chrome 120 or newer (and other Chromium browsers of the same version), Firefox 91.1 or newer.
 
-Build the extension from source (Node.js 22 or newer):
+Build the extension from source (Node.js 22 or newer, npm 11 or newer):
 
 ```bash
 npm ci
