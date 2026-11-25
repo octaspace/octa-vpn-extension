@@ -1,6 +1,6 @@
 import { isVpnSession, OctaClient } from "@octaspace/sdk"
 
-import { API_HOST } from "./config"
+import { API_HOST, APP_HEADERS } from "./config"
 import type { Geo, VpnNode } from "./model"
 import { parseProxyConfig, type ProxyEndpoint } from "./proxy"
 
@@ -25,7 +25,14 @@ const PROTOCOL = "http_proxy"
 const MICRO_USD = 1_000_000
 
 export function createApi(apiKey: string) {
-  const client = new OctaClient({ apiKey, baseUrl: API_HOST })
+  const client = new OctaClient({
+    apiKey,
+    baseUrl: API_HOST,
+    onRequest: ({ headers }) => {
+      for (const [name, value] of Object.entries(APP_HEADERS))
+        headers.set(name, value)
+    }
+  })
 
   return {
     /** Account balance in USD; may be negative. */
@@ -96,8 +103,8 @@ export function createApi(apiKey: string) {
     async geo(): Promise<Geo> {
       const res = await fetch(`${API_HOST}/geo`, {
         headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "X-OCTA-APP": "browser-extension"
+          ...APP_HEADERS,
+          Authorization: `Bearer ${apiKey}`
         }
       })
       if (!res.ok) throw new Error(`geo ${res.status}`)

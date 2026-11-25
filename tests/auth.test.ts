@@ -51,7 +51,10 @@ describe("verifyKey", () => {
     expect(fetch).toHaveBeenCalledWith(
       "https://api.octa.space/accounts/balance",
       {
-        headers: { Authorization: `Bearer ${KEY}` }
+        headers: {
+          "X-OCTA-APP": "browser-extension",
+          Authorization: `Bearer ${KEY}`
+        }
       }
     )
   })

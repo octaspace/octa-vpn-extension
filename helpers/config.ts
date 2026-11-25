@@ -6,6 +6,8 @@ export const IS_FIREFOX = process.env.PLASMO_BROWSER === "firefox"
 // the API key of this app.
 export const API_HOST = "https://api.octa.space"
 export const OAUTH_HOST = "https://console.octa.space"
+// Sent with every API request: tells the API which app is calling.
+export const APP_HEADERS = { "X-OCTA-APP": "browser-extension" } as const
 // The dashboard's OAuth applications of this extension (allowed to issue API keys), for
 // the redirect URIs https://meklldccaengbfnlbbbgadiijkgcfhbk.chromiumapp.org/
 // (Chrome) and https://9d8617723c445f3686b2f57bbf9587fa1e6b0ea3.extensions.allizom.org/

@@ -2,7 +2,7 @@
 // the background: the auth window takes focus and closes the popup, which
 // would take the flow down with it.
 
-import { API_HOST, OAUTH_CLIENT_ID, OAUTH_HOST } from "./config"
+import { API_HOST, APP_HEADERS, OAUTH_CLIENT_ID, OAUTH_HOST } from "./config"
 import { AppError } from "./errors"
 import {
   generateCodeChallenge,
@@ -76,7 +76,7 @@ export async function verifyKey(key: string): Promise<void> {
   let res: Response
   try {
     res = await fetch(`${API_HOST}/accounts/balance`, {
-      headers: { Authorization: `Bearer ${key}` }
+      headers: { ...APP_HEADERS, Authorization: `Bearer ${key}` }
     })
   } catch {
     throw new AppError("network")
